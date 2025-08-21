@@ -13,6 +13,7 @@ import { ReporteRedSocialComponent } from './Paginas/Inicio/reporte-red-social/r
 import { ReporteTiempoPaginaComponent } from './Paginas/Inicio/reporte-tiempo-pagina/reporte-tiempo-pagina.component';
 import { PagoComponent } from './Paginas/Inicio/pago/pago.component';
 import { LoginGuard } from './Servicios/loginGuard';
+import { SpinnerGlobalComponent } from './Componentes/spinner-global/spinner-global.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/nosotros', pathMatch: 'full' },
@@ -25,6 +26,7 @@ export const routes: Routes = [
   { path: 'productos/buscar', component: ProductosComponent },
   { path: 'contacto', component: ContactoComponent },
   { path: 'otro', component: OtroComponent },
+  { path: 'spinner-global', component: SpinnerGlobalComponent },
 
   //Rutas protegidas
   { path: 'reporte-producto', component: ReporteProductoComponent, canActivate: [AutorizacionRuta] },

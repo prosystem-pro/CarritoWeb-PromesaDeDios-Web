@@ -33,12 +33,12 @@
 
         <div class="container">
             <!-- Botón para entrar/salir del modo edición (similar al menuCategoria) -->
-            <button *ngIf="Permiso.PermisoAdminSuperAdmin()" (click)="toggleModoEdicion()"
+            <!-- <button *ngIf="Permiso.PermisoAdminSuperAdmin()" (click)="toggleModoEdicion()"
                 class="btn edit-main-button btn-edit"
                 [ngClass]="{'btn-success': modoEdicion, 'btn-light': !modoEdicion}">
                 <i class="bi" [ngClass]="{'bi-pencil-square': !modoEdicion, 'bi-check-lg': modoEdicion}"
                     [style.color]="modoEdicion ? '#ffffff' : '#000000'"></i>
-            </button>
+            </button> -->
 
             <!-- Cabecera con nombre de categoría -->
             <div class="header">
@@ -87,7 +87,7 @@
             <!-- Grilla de productos -->
             <div class="product-grid" *ngIf="!cargando">
                 <!-- Producto vacío para crear nuevo (visible solo en modo edición) -->
-                <div *ngIf="modoEdicion && creandoNuevoProducto" class="product-card">
+                <div  class="product-card">
                     <div class="edit-product-controls">
                         <button class="delete-product-btn" title="Cancelar" (click)="cancelarNuevoProducto()">
                             <i class="bi bi-x"></i>
@@ -95,7 +95,7 @@
                     </div>
 
                     <div class="product-image position-relative">
-                        <div *ngIf="!nuevaImagenPreview" class="edit-image-overlay d-flex"
+                        <div *ngIf="!nuevaImagenPreview && Permiso.TienePermiso('Producto', 'SubirImagen')" class="edit-image-overlay d-flex"
                             (click)="nuevaImagenInput.click()">
                             <div class="d-flex flex-column align-items-center justify-content-center w-100">
                                 <i class="bi bi-image fs-3 mb-2"></i>

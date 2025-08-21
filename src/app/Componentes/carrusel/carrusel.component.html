@@ -1,11 +1,11 @@
 <!-- Botón para activar/desactivar el modo edición -->
 <div class="container my-3 text-end">
-    <button *ngIf="Permiso.PermisoSuperAdmin()" type="button" (click)="toggleModoEdicion()"
+    <!-- <button *ngIf="Permiso.TienePermiso('CarruselImagen', 'SubirImagen')" type="button" (click)="toggleModoEdicion()"
         class="btn edit-main-button btn-edicion" [ngClass]="{'btn-success': modoEdicion, 'btn-light': !modoEdicion}"
         aria-label="Alternar modo edición">
         <i class="bi" [ngClass]="{'bi-pencil-square': !modoEdicion, 'bi-check-lg': modoEdicion}"
             [style.color]="modoEdicion ? '#ffffff' : '#000000'"></i>
-    </button>
+    </button> -->
 </div>
 
 <!-- Contenedor principal del carrusel -->
@@ -26,7 +26,7 @@
         [attr.aria-live]="autoplay ? 'polite' : 'off'">
 
         <!-- Tarjeta para añadir nueva imagen (solo en modo edición) -->
-        <div *ngIf="modoEdicion" class="product-card add-card">
+        <div *ngIf="Permiso.TienePermiso('CarruselImagen', 'SubirImagen')" class="product-card add-card">
             <div class="position-relative add-image-container" (click)="nuevoFileInput.click()" tabindex="0"
                 role="button" aria-label="Añadir nueva imagen" (keydown.enter)="nuevoFileInput.click()">
                 <div *ngIf="!nuevaImagen.imagenPreview" class="d-flex justify-content-center align-items-center h-100">
@@ -55,7 +55,7 @@
         <!-- Tarjetas de productos existentes -->
         <div class="product-card" *ngFor="let item of items; let i = index" [attr.data-index]="i">
             <!-- Vista normal (visible cuando no está en edición o cuando no es el ítem en edición) -->
-            <div class="product-card-inner" *ngIf="!modoEdicion || !esItemEnEdicion(item)"
+            <div class="product-card-inner" *ngIf="!modoEdicion && !esItemEnEdicion(item)"
                 [attr.aria-label]="item.title || 'Producto ' + (i + 1)">
                 <img [src]="item.UrlImagen" [alt]="item.alt || 'Imagen de producto'" class="product-image">
 
@@ -65,12 +65,12 @@
                 </div>
 
                 <!-- Botones de edición y eliminación (visibles solo en modo edición) -->
-                <div class="edit-controls" *ngIf="modoEdicion">
-                    <button type="button" class="btn btn-sm btn-primary edit-btn" (click)="iniciarEdicion(item)"
+                <div class="edit-controls" >
+                    <button *ngIf="Permiso.TienePermiso('CarruselImagen', 'Editar')" type="button" class="btn btn-sm btn-primary edit-btn" (click)="iniciarEdicion(item)"
                         aria-label="Editar imagen">
                         <i class="bi bi-pencil"></i>
                     </button>
-                    <button type="button" class="btn btn-sm btn-danger delete-btn" (click)="eliminarImagen(item)"
+                    <button *ngIf="Permiso.TienePermiso('CarruselImagen', 'Eliminar')" type="button" class="btn btn-sm btn-danger delete-btn" (click)="eliminarImagen(item)"
                         aria-label="Eliminar imagen">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -78,7 +78,7 @@
             </div>
 
             <!-- Vista de edición (visible solo cuando está en modo edición y es el ítem en edición) -->
-            <div class="product-card-edit" *ngIf="modoEdicion && esItemEnEdicion(item)">
+            <div class="product-card-edit" *ngIf="!modoEdicion && esItemEnEdicion(item)">
                 <div class="position-relative" (click)="editFileInput.click()" tabindex="0" role="button"
                     aria-label="Cambiar imagen" (keydown.enter)="editFileInput.click()">
                     <img [src]="imagenEdicion.imagenPreview" class="product-image" alt="Imagen en edición">
@@ -127,9 +127,10 @@
     <!-- Título del carrusel -->
     <div class="carousel-title">
         <!-- Título en modo visualización -->
-        <div *ngIf="!editandoTitulo">
+        <div>
             <h3 [class]="titleClass">{{ title }}</h3>
-            <button *ngIf="modoEdicion" class="btn btn-sm btn-outline-secondary ms-2" (click)="activarEdicionTitulo()">
+            <button *ngIf="Permiso.TienePermiso('Carrusel', 'Editar')"
+                class="btn btn-sm btn-outline-secondary ms-2" (click)="activarEdicionTitulo()">
                 <i class="bi bi-pencil"></i>
             </button>
             <hr class="mx-auto" style="width: 200px;">
@@ -150,3 +151,5 @@
         </div>
     </div>
 </div>
+
+<app-spinner-global [visible]="isLoading"></app-spinner-global>

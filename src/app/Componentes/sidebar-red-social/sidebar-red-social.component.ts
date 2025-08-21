@@ -67,8 +67,8 @@ export class SidebarRedSocialComponent implements OnInit {
 
   cargarRedesSociales(): void {
     this.redSocialServicio.Listado('SocialSidebar').subscribe({
-      next: (data) => {
-        this.RedeSocial = data.filter((red: any) => red.Estatus === 1);
+      next: (Respuesta) => {
+        this.RedeSocial = Respuesta.data.filter((red: any) => red.Estatus === 1);
       },
       error: (error) => {},
     });

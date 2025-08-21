@@ -3,8 +3,8 @@
     <div class="col-md-6 d-none d-md-block banner-login">
       <img [src]="portadaLogin?.UrlImagenPortada" class="img-fluid h-100 w-100"
         alt="Promesa de Dios Panadería & Repostería">
-      <button *ngIf="modoEdicion" class="btn btn-sm btn-light trigo-edit-button" style="top: 0; left: 0;"
-        title="Cambiar imagen">
+      <button *ngIf="Permiso.TienePermiso('LoginPortada', 'SubirImagen')" class="btn btn-sm btn-light trigo-edit-button"
+        style="top: 0; left: 0;" title="Cambiar imagen">
         <label for="imagenPortadaUpload" style="margin-bottom: 0; cursor: pointer;">
           <i class="bi bi-image fs-4"></i>
         </label>
@@ -16,8 +16,8 @@
     <div class="col-md-6 contenedor-formulario-login">
       <div class="contenedor-trigo-abajo">
         <img [src]="portadaLogin?.UrlImagenDecorativaIzquierda" class="trigo-abajo" alt="Trigo decorativo">
-        <button *ngIf="modoEdicion" class="btn btn-sm btn-light trigo-edit-button" style="top: 0; left: 0;"
-          title="Cambiar imagen">
+        <button *ngIf="Permiso.TienePermiso('LoginPortada', 'SubirImagen')"
+          class="btn btn-sm btn-light trigo-edit-button" style="top: 0; left: 0;" title="Cambiar imagen">
           <label for="trigoIzquierdoUpload" style="margin-bottom: 0; cursor: pointer;">
             <i class="bi bi-image fs-4"></i>
           </label>
@@ -34,15 +34,22 @@
           <h4 [style.color]="portadaLogin?.Color" class="titulo-login">INICIAR SESIÓN</h4>
         </div>
 
-        <button *ngIf="Permiso.PermisoSuperAdmin()" (click)="toggleModoEdicion()" class="btn edit-main-button btn-edit"
+        <!-- <button *ngIf="Permiso.PermisoSuperAdmin()" (click)="toggleModoEdicion()" class="btn edit-main-button btn-edit"
           [ngClass]="{ 'btn-success': modoEdicion, 'btn-light': !modoEdicion }">
           <i class="bi" [ngClass]="{
           'bi-pencil-square': !modoEdicion,
           'bi-check-lg': modoEdicion
         }" [style.color]="modoEdicion ? '#ffffff' : '#000000'"></i>
+        </button> -->
+
+        <button *ngIf="Permiso.TienePermiso('LoginPortada', 'Editar')" class="btn edit-main-button btn-edit btn-success"
+          (click)="guardarCambios()">
+          <i class="bi bi-check-lg" style="color: #ffffff;"></i>
         </button>
-        <button *ngIf="modoEdicion" class="btn btn-sm btn-light edit-button" style="top: 0; right: 0;"
-          title="Cambiar color">
+
+
+        <button *ngIf="portadaLogin && Permiso.TienePermiso('LoginPortada', 'Editar')"
+          class="btn btn-sm btn-light edit-button" style="top: 0; right: 0;" title="Cambiar color">
           <input type="color" [(ngModel)]="portadaLogin.Color" style="width: 20px; height: 20px;">
         </button>
 
@@ -82,9 +89,8 @@
           </div>
 
           <button [style.backgroundColor]="portadaLogin?.Color" type="submit" class="boton boton-oscuro w-100 py-2"
-            [disabled]="loginForm.invalid || isLoading">
-            <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2" role="status"></span>
-            {{ isLoading ? 'Iniciando...' : 'Iniciar' }}
+            [disabled]="loginForm.invalid">
+            Iniciar
           </button>
 
           <div class="text-end mt-5">
@@ -95,8 +101,8 @@
 
       <div class="contenedor-trigo-derecha">
         <img [src]="portadaLogin?.UrlImagenDecorativaDerecha" class="trigo-derecha" alt="Trigo decorativo">
-        <button *ngIf="modoEdicion" class="btn btn-sm btn-light trigo-edit-button" style="top: 0; right: 0;"
-          title="Cambiar imagen">
+        <button *ngIf="Permiso.TienePermiso('LoginPortada', 'SubirImagen')"
+          class="btn btn-sm btn-light trigo-edit-button" style="top: 0; right: 0;" title="Cambiar imagen">
           <label for="trigoDerechoUpload" style="margin-bottom: 0; cursor: pointer;">
             <i class="bi bi-image fs-4"></i>
           </label>
@@ -107,3 +113,5 @@
     </div>
   </div>
 </div>
+
+<app-spinner-global [visible]="isLoading"></app-spinner-global>

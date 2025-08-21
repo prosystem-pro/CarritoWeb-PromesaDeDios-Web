@@ -7,9 +7,9 @@ import { Entorno } from '../Entornos/Entorno';
   providedIn: 'root'
 })
 export class CarruselImagenServicio {
-  private Url = `${Entorno.ApiUrl}carruselimagen`; 
+  private Url = `${Entorno.ApiUrl}carruselimagen`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   private obtenerHeaders(): HttpHeaders {
     const token = localStorage.getItem('token');
@@ -26,7 +26,7 @@ export class CarruselImagenServicio {
   ListadoCarrusel(Codigo: number): Observable<any> {
     return this.http.get(`${this.Url}/listado/${Codigo}`, { headers: this.obtenerHeaders() });
   }
-  
+
   Crear(Datos: any): Observable<any> {
     return this.http.post(`${this.Url}/crear`, Datos, { headers: this.obtenerHeaders() });
   }
@@ -45,5 +45,8 @@ export class CarruselImagenServicio {
 
   CrearEditar(Datos: any): Observable<any> {
     return this.http.post(`${this.Url}/creareditar`, Datos, { headers: this.obtenerHeaders() });
+  }
+  SubirImagen(formData: FormData): Observable<any> {
+    return this.http.post(`${this.Url}/subir-imagen`, formData);
   }
 }

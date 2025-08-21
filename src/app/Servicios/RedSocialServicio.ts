@@ -7,17 +7,15 @@ import { Entorno } from '../Entornos/Entorno';
   providedIn: 'root'
 })
 export class RedSocialServicio {
-  private Url = `${Entorno.ApiUrl}redsocial`; 
+  private Url = `${Entorno.ApiUrl}redsocial`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
-Listado(filtro: string = ''): Observable<any> {
-  const url = filtro ? `${this.Url}/listado/${filtro}` : `${this.Url}/listado`;
-  return this.http.get(url);
-}
+  Listado(filtro: string = ''): Observable<any> {
+    const url = filtro ? `${this.Url}/listado/${filtro}` : `${this.Url}/listado`;
+    return this.http.get(url);
+  }
 
-
-  
   Crear(Datos: any): Observable<any> {
     return this.http.post(`${this.Url}/crear`, Datos);
   }

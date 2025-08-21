@@ -10,7 +10,7 @@ import { Carrusel } from '../Modelos/Carrusel';
 export class CarruselServicio {
   private Url = `${Entorno.ApiUrl}carrusel`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   private obtenerHeaders(): HttpHeaders {
     const token = localStorage.getItem('token');
@@ -20,18 +20,21 @@ export class CarruselServicio {
     });
   }
 
-  Listado(): Observable<Carrusel[]> {
-    return this.http.get<Carrusel[]>(`${this.Url}/listado`, { headers: this.obtenerHeaders() });
+  Listado(): Observable<any> {
+    return this.http.get(`${this.Url}/listado`);
   }
-  
+
+
   Crear(Datos: Carrusel): Observable<any> {
     return this.http.post(`${this.Url}/crear`, Datos, { headers: this.obtenerHeaders() });
   }
 
-  ObtenerPorCodigo(Codigo: number): Observable<Carrusel> {
-    return this.http.get<Carrusel>(`${this.Url}/${Codigo}`, { headers: this.obtenerHeaders() });
+  // ObtenerPorCodigo(Codigo: number): Observable<Carrusel> {
+  //   return this.http.get<Carrusel>(`${this.Url}/${Codigo}`, { headers: this.obtenerHeaders() });
+  // }
+  ObtenerPorCodigo(Codigo: number): Observable<any> {
+    return this.http.get(`${this.Url}/${Codigo}`);
   }
-
   Editar(Datos: Carrusel): Observable<any> {
     return this.http.put(`${this.Url}/editar/${Datos.CodigoCarrusel}`, Datos, { headers: this.obtenerHeaders() });
   }

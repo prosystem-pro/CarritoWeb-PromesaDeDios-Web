@@ -226,7 +226,7 @@ export class ProductosComponent implements OnInit, OnDestroy {
         const esAdminOSuperAdmin = this.Permiso.PermisoAdminSuperAdmin();
 
         // Filtrar productos según el estatus y rol del usuario
-        const productosFiltrados = data.filter((producto: Producto) => {
+        const productosFiltrados = data.data.filter((producto: Producto) => {
           return (
             producto.Estatus === 1 ||
             (producto.Estatus === 2 && esAdminOSuperAdmin)
@@ -251,10 +251,10 @@ export class ProductosComponent implements OnInit, OnDestroy {
   cargarClasificacion(codigo: number): void {
     this.clasificacionProductoServicio.ObtenerPorCodigo(codigo).subscribe({
       next: (data) => {
-        this.nombreClasificacion = data.NombreClasificacionProducto;
+        this.nombreClasificacion = data.data.NombreClasificacionProducto;
 
         // Formatear el nombre de la categoría para URL
-        const nombreFormateado = data.NombreClasificacionProducto
+        const nombreFormateado = data.data.NombreClasificacionProducto
           .toLowerCase()
           .trim()
           .replace(/\s+/g, '-');

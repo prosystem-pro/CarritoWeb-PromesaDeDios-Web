@@ -2,8 +2,8 @@
 <section class="principal">
     <div class="trigo-izquierda">
         <img [src]="menuPortada?.UrlImagenPortadaIzquierdo" alt="Izquierda" class="img-fluid" />
-        <button *ngIf="modoEdicion" class="btn btn-sm btn-light trigo-edit-button" style="top: 0; left: 0"
-            title="Cambiar imagen">
+        <button *ngIf="modoEdicion && Permiso.TienePermiso('MenuPortada', 'SubirImagen')"
+            class="btn btn-sm btn-light trigo-edit-button" style="top: 0; left: 0" title="Cambiar imagen">
             <label for="trigoIzquierdoUpload" style="margin-bottom: 0; cursor: pointer">
                 <i class="bi bi-image"></i>
             </label>
@@ -13,8 +13,8 @@
     </div>
     <div class="trigo-derecho">
         <img [src]="menuPortada?.UrlImagenPortadaDerecho" alt="Derecho" class="img-fluid" />
-        <button *ngIf="modoEdicion" class="btn btn-sm btn-light trigo-edit-button" style="top: 0; right: 0"
-            title="Cambiar imagen">
+        <button *ngIf="modoEdicion && Permiso.TienePermiso('MenuPortada', 'SubirImagen')"
+            class="btn btn-sm btn-light trigo-edit-button" style="top: 0; right: 0" title="Cambiar imagen">
             <label for="trigoDerechoUpload" style="margin-bottom: 0; cursor: pointer">
                 <i class="bi bi-image"></i>
             </label>
@@ -25,8 +25,8 @@
 
     <div class="container principal-contenido">
         <!-- Botón para entrar/salir del modo edición -->
-        <button *ngIf="Permiso.PermisoSuperAdmin()" (click)="toggleModoEdicion()" class="btn edit-main-button btn-edit"
-            [ngClass]="{ 'btn-success': modoEdicion, 'btn-light': !modoEdicion }">
+        <button *ngIf="Permiso.TienePermiso('MenuPortada', 'Editar')" (click)="toggleModoEdicion()"
+            class="btn edit-main-button btn-edit" [ngClass]="{ 'btn-success': modoEdicion, 'btn-light': !modoEdicion }">
             <i class="bi" [ngClass]="{
           'bi-pencil-square': !modoEdicion,
           'bi-check-lg': modoEdicion
@@ -165,7 +165,8 @@
 
         <div class="row justify-content-center mb-5">
             <!-- Elemento para añadir nueva categoría (visible solo en modo edición) -->
-            <div *ngIf="modoEdicion" class="col-6 col-sm-4 col-md-3 text-center mb-4">
+            <div *ngIf="Permiso.TienePermiso('ClasificacionProducto', 'SubirImagen') && Permiso.TienePermiso('ClasificacionProducto', 'Editar')"
+                class="col-6 col-sm-4 col-md-3 text-center mb-4">
                 <div class="circulo-img mb-3 custom-border position-relative add-new-category"
                     (click)="nuevaCategoriaFileInput.click()"
                     [style.border-color]="menuPortada?.ColorContornoImagenClasificacion">
@@ -202,7 +203,8 @@
                         class="img-fluid rounded-circle border border-5 border-white" />
 
                     <!-- Botón de edición sobre la imagen (visible solo en modo edición) -->
-                    <div *ngIf="modoEdicion" class="edit-image-overlay" (click)="fileInput.click()">
+                    <div *ngIf="Permiso.TienePermiso('ClasificacionProducto', 'SubirImagen')" class="edit-image-overlay"
+                        (click)="fileInput.click()">
                         <div class="d-flex flex-column align-items-center justify-content-center">
                             <i class="bi bi-image fs-3 mb-2"></i>
                             <span class="small text-white">Cambiar imagen</span>
@@ -212,8 +214,9 @@
                         accept="image/*" />
 
                     <!-- Botón para eliminar categoría (visible solo en modo edición) -->
-                    <button *ngIf="modoEdicion" class="delete-btn position-absolute top-0 end-0"
-                        title="Eliminar categoría" (click)="eliminarCategoria(clasificacion)">
+                    <button *ngIf="Permiso.TienePermiso('ClasificacionProducto', 'Eliminar')"
+                        class="delete-btn position-absolute top-0 end-0" title="Eliminar categoría"
+                        (click)="eliminarCategoria(clasificacion)">
                         <i class="bi bi-trash-fill"></i>
                     </button>
                 </div>
@@ -221,28 +224,28 @@
                 <!-- Botón con título editable -->
                 <div class="position-relative">
                     <button class="btn text-dark w-100 fw-bold rounded-5 btn-custom" (click)="
-              !modoEdicion &&
-                navegar(
-                  '/productos',
-                  clasificacion.CodigoClasificacionProducto,
-                  clasificacion.NombreClasificacionProducto.toLowerCase()
-                )
-            " [style.background-color]="
-              menuPortada?.ColorFondoNombreClasificacion
-            " [style.border-color]="menuPortada?.ColorFondoNombreClasificacion">
+    editandoTitulo !== clasificacion.CodigoClasificacionProducto && 
+    navegar(
+      '/productos',
+      clasificacion.CodigoClasificacionProducto,
+      clasificacion.NombreClasificacionProducto.toLowerCase()
+    )
+  " [style.background-color]="menuPortada?.ColorFondoNombreClasificacion"
+                        [style.border-color]="menuPortada?.ColorFondoNombreClasificacion">
+
                         <!-- Aquí cambiamos para almacenar el contenido original y mostrar los botones de acción -->
-                        <span #titleContent [contentEditable]="
-                modoEdicion &&
-                editandoTitulo === clasificacion.CodigoClasificacionProducto
-              " (input)="onTituloInput($event, clasificacion)" [style.color]="menuPortada?.ColorNombreClasificacion"
+                        <span #titleContent
+                            [contentEditable]="editandoTitulo === clasificacion.CodigoClasificacionProducto"
+                            (input)="onTituloInput($event, clasificacion)"
+                            [style.color]="menuPortada?.ColorNombreClasificacion"
                             [attr.data-id]="clasificacion.CodigoClasificacionProducto">
                             {{ clasificacion.NombreClasificacionProducto }}
                         </span>
                     </button>
 
+
                     <!-- Botones de acción para guardar/cancelar (solo visibles cuando se está editando este título) -->
                     <div *ngIf="
-              modoEdicion &&
               editandoTitulo === clasificacion.CodigoClasificacionProducto
             " class="edit-actions position-absolute start-50 translate-middle-x d-flex justify-content-center"
                         style="top: calc(100% + 5px); width: 100%">
@@ -258,7 +261,7 @@
 
                     <!-- Icono de edición para iniciar la edición (visible solo en modo edición) -->
                     <button *ngIf="
-              modoEdicion &&
+              Permiso.TienePermiso('ClasificacionProducto', 'Editar') &&
               editandoTitulo !== clasificacion.CodigoClasificacionProducto
             " class="edit-btn-title position-absolute end-0 top-50 translate-middle-y" title="Editar título"
                         style="margin-right: -30px" (click)="iniciarEdicionTitulo(clasificacion)">
@@ -274,7 +277,7 @@
     <img [src]="menuPortada?.UrlImagenPresentacion" alt="De Temporada" class="img-fluid" />
 
     <!-- Nuevo selector de imagen basado en el prototipo -->
-    <div *ngIf="modoEdicion" class="image-upload-overlay">
+    <div *ngIf="modoEdicion && Permiso.TienePermiso('MenuPortada', 'SubirImagen')" class="image-upload-overlay">
         <label for="temporadaUpload" class="image-upload-container">
             <div class="image-placeholder">
                 <i class="bi bi-image"></i>
@@ -301,3 +304,5 @@
         <span class="visually-hidden">Cargando...</span>
     </div>
 </div>
+
+<app-spinner-global [visible]="isLoading"></app-spinner-global>

@@ -8,35 +8,47 @@ export class AlertaServicio {
 
   constructor() {}
 
-  MostrarExito(mensaje: string, titulo: string = 'Éxito'): void {
-    Swal.fire({
-      icon: 'success',
-      title: titulo,
-      text: mensaje,
-      confirmButtonColor: '#3085d6'
-    });
-  }
 
-  MostrarAlerta(mensaje: string, titulo: string = 'Atención'): void {
-    Swal.fire({
-      icon: 'warning',
-      title: titulo,
-      text: mensaje,
-      confirmButtonColor: '#f0ad4e'
-    });
-  }
 
-  MostrarError(error: any, titulo: string = 'Error'): void {
-    const mensaje = error?.error?.message || 'Ocurrió un error inesperado.';
-    Swal.fire({
-      icon: 'error',
-      title: titulo,
-      text: mensaje,
-      confirmButtonColor: '#d33'
-    });
+MostrarExito(mensaje: string, titulo: string = 'Éxito'): void {
+  Swal.fire({
+    icon: 'success',
+    title: titulo,
+    text: mensaje,
+    confirmButtonColor: '#3085d6',
+    showConfirmButton: false,
+    timer: 3000, // 3 segundos
+    timerProgressBar: true
+  });
+}
 
-    console.error('🔴 Error detallado:', error);
-  }
+MostrarAlerta(mensaje: string, titulo: string = 'Atención'): void {
+  Swal.fire({
+    icon: 'warning',
+    title: titulo,
+    text: mensaje,
+    confirmButtonColor: '#f0ad4e',
+    showConfirmButton: false,
+    timer: 3000, 
+    timerProgressBar: true
+  });
+}
+
+MostrarError(error: any, titulo: string = 'Error'): void {
+  const mensaje = error?.error?.message || 'Ocurrió un error inesperado.';
+  Swal.fire({
+    icon: 'error',
+    title: titulo,
+    text: mensaje,
+    confirmButtonColor: '#d33',
+    showConfirmButton: false,
+    timer: 3000, 
+    timerProgressBar: true
+  });
+
+  console.error('🔴 Error detallado:', error);
+}
+
 
   Confirmacion(titulo: string, texto: string = '', confirmText: string = 'Confirmar', cancelText: string = 'Cancelar'): Promise<boolean> {
   return Swal.fire({

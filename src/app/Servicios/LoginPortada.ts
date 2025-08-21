@@ -11,11 +11,12 @@ import { map } from 'rxjs/operators';
 export class LoginPortadaServicio {
   private Url = `${Entorno.ApiUrl}loginportada`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
-  Listado(): Observable<LoginPortada[]> {
-    return this.http.get<LoginPortada[]>(`${this.Url}/listado`);
+  Listado(): Observable<{ data: LoginPortada[] }> {
+    return this.http.get<{ data: LoginPortada[] }>(`${this.Url}/listado`);
   }
+
 
   Crear(Datos: LoginPortada): Observable<any> {
     return this.http.post(`${this.Url}/crear`, Datos);
@@ -31,5 +32,9 @@ export class LoginPortadaServicio {
 
   Eliminar(Codigo: number): Observable<any> {
     return this.http.delete(`${this.Url}/eliminar/${Codigo}`);
+  }
+
+  SubirImagen(formData: FormData): Observable<any> {
+    return this.http.post(`${this.Url}/subir-imagen`, formData);
   }
 }

@@ -8,15 +8,17 @@ import { LoginPortadaServicio } from '../../../Servicios/LoginPortada';
 import { PermisoServicio } from '../../../Autorizacion/AutorizacionPermiso';
 import { Entorno } from '../../../Entornos/Entorno';
 import { AlertaServicio } from '../../../Servicios/Alerta-Servicio';
+import { SpinnerGlobalComponent } from '../../../Componentes/spinner-global/spinner-global.component';
 
 @Component({
   selector: 'app-login',
-  imports: [FormsModule, CommonModule],
+  imports: [FormsModule, CommonModule, SpinnerGlobalComponent],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
 })
+
 export class LoginComponent implements OnInit {
-  private Url = `${Entorno.ApiUrl}`;
+
   private NombreEmpresa = `${Entorno.NombreEmpresa}`;
   NombreUsuario: string = '';
   Clave: string = '';
@@ -36,7 +38,7 @@ export class LoginComponent implements OnInit {
     public Permiso: PermisoServicio,
     private http: HttpClient,
     private alertaServicio: AlertaServicio
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.obtenerPortadaLogin();
@@ -44,23 +46,38 @@ export class LoginComponent implements OnInit {
   }
 
   obtenerPortadaLogin(): void {
+    this.isLoading = true;
     this.loginPortadaServicio.Listado().subscribe({
-      next: (data) => {
-        if (data && data.length > 0) {
-          this.portadaLogin = data[0];
-          console.log(this.portadaLogin);
+      next: (Respuesta) => {
+        const lista = Respuesta?.data;
+        if (lista && lista.length > 0) {
+          this.portadaLogin = lista[0];
         } else {
           this.crearLoginPortadaPorDefecto();
         }
+        this.isLoading = false;
       },
       error: (error) => {
-        console.error('Error al obtener la portada de login', error);
-        // this.crearLoginPortadaPorDefecto();
-      },
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
+      }
     });
   }
 
   private crearLoginPortadaPorDefecto(): void {
+    this.isLoading = true;
     const portadaDefecto = {
       UrlImagenPortada: '',
       UrlImagenDecorativaIzquierda: '',
@@ -71,125 +88,139 @@ export class LoginComponent implements OnInit {
 
     this.loginPortadaServicio.Crear(portadaDefecto).subscribe({
       next: (response) => {
-        this.portadaLogin = response.Entidad || response;
-        this.alertaServicio.MostrarExito('Se creó una configuración de login por defecto');
+        if (response?.tipo === 'Éxito') {
+          this.alertaServicio.MostrarExito(response.message);
+        }
         this.obtenerPortadaLogin();
+        this.isLoading = false;
       },
       error: (error) => {
-        console.error('Error al crear portada de login por defecto:', error);
-        this.alertaServicio.MostrarError('No se pudo crear la configuración inicial del login');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
       }
     });
   }
 
-  // cargarUsuarioRecordado(): void {
-  //   // Cargar usuario recordado del localStorage si existe
-  //   const usuarioRecordado = localStorage.getItem('usuarioRecordado');
-  //   if (usuarioRecordado) {
-  //     this.NombreUsuario = usuarioRecordado;
-  //     this.recordarUsuario = true;
-  //   }
-  // }
-
   // Método para activar/desactivar el modo edición
-  toggleModoEdicion(): void {
-    if (!this.modoEdicion) {
-      // Hacer una copia profunda de los datos antes de entrar en modo edición
-      this.datosOriginales = JSON.parse(JSON.stringify(this.portadaLogin));
-      this.modoEdicion = true;
-      document.body.classList.add('modoEdicion');
-    } else {
-      // Usar el servicio de alerta para la confirmación
-      this.alertaServicio
-        .Confirmacion('¿Desea guardar los cambios?')
-        .then((confirmado) => {
-          if (confirmado) {
-            this.guardarCambios();
-          } else {
-            // Restaurar datos originales si cancela
-            this.portadaLogin = JSON.parse(
-              JSON.stringify(this.datosOriginales)
-            );
-          }
+toggleModoEdicion(): void {
+  if (!this.modoEdicion) {
+    // Copia de seguridad antes de edición
+    this.datosOriginales = JSON.parse(JSON.stringify(this.portadaLogin));
+    this.modoEdicion = true;
+    document.body.classList.add('modoEdicion');
+  } else {
+    this.alertaServicio
+      .Confirmacion('¿Desea guardar los cambios?')
+      .then((confirmado) => {
+        if (confirmado) {
+          this.guardarCambios();
+        } else {
+          // Restaurar datos si se cancela
+          this.portadaLogin = JSON.parse(
+            JSON.stringify(this.datosOriginales)
+          );
+        }
 
-          // Salir del modo edición solo después de decidir
-          this.modoEdicion = false;
-          document.body.classList.remove('modoEdicion');
-        });
-    }
+        this.modoEdicion = false;
+        document.body.classList.remove('modoEdicion');
+      });
   }
+}
+
 
   // Método para guardar los cambios
   guardarCambios(): void {
-    if (this.portadaLogin) {
-      const datosActualizados = { ...this.portadaLogin };
-
-      delete datosActualizados.UrlImagenPortada;
-      delete datosActualizados.UrlImagenDecorativaIzquierda;
-      delete datosActualizados.UrlImagenDecorativaDerecha;
-
-      this.loginPortadaServicio.Editar(datosActualizados).subscribe({
-        next: (response) => {
-          this.alertaServicio.MostrarExito('Cambios guardados correctamente');
-          this.modoEdicion = false;
-          document.body.classList.remove('modoEdicion');
-          this.datosOriginales = null;
-        },
-        error: (error) => {
-          this.alertaServicio.MostrarError(
-            error,
-            'Error al guardar los cambios. Por favor, intente de nuevo.'
-          );
-        },
-      });
-    } else {
-      console.error('No hay datos disponibles para actualizar');
-    }
-  }
-
-  login(): void {
-    // Limpiar mensaje de error anterior
-    this.errorMessage = '';
     this.isLoading = true;
+    if (!this.portadaLogin) {
 
-    // Validación básica
-    if (!this.NombreUsuario.trim() || !this.Clave.trim()) {
-      this.errorMessage = 'Por favor, complete todos los campos';
-      this.isLoading = false;
+      this.alertaServicio.MostrarAlerta(
+        'No hay datos disponibles para actualizar',
+        'Atención'
+      );
       return;
     }
 
-    this.LoginServicio.Login(this.NombreUsuario, this.Clave).subscribe({
+    const datosActualizados = { ...this.portadaLogin };
+
+    delete datosActualizados.UrlImagenPortada;
+    delete datosActualizados.UrlImagenDecorativaIzquierda;
+    delete datosActualizados.UrlImagenDecorativaDerecha;
+
+    this.loginPortadaServicio.Editar(datosActualizados).subscribe({
       next: (response) => {
-        // Guardar o eliminar usuario recordado
-        // if (this.recordarUsuario) {
-        //   localStorage.setItem('usuarioRecordado', this.NombreUsuario);
-        // } else {
-        //   localStorage.removeItem('usuarioRecordado');
-        // }
-
-        // Guardar token de autenticación si viene en la respuesta
-        if (response.token) {
-          localStorage.setItem('authToken', response.token);
+        if (response?.tipo === 'Éxito') {
+          this.alertaServicio.MostrarExito(response.message);
         }
-
+        if (response.success) {
+          this.modoEdicion = false;
+          document.body.classList.remove('modoEdicion');
+          this.datosOriginales = null;
+        }
         this.isLoading = false;
-        this.router.navigate(['/nosotros']);
       },
       error: (error) => {
-        console.error('Error en el login', error);
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
+      }
+    });
+  }
+
+
+  login(): void {
+    this.errorMessage = '';
+    this.isLoading = true;
+
+    this.LoginServicio.Login(this.NombreUsuario, this.Clave).subscribe({
+      next: (response) => {
+        if (response?.tipo === 'Éxito') {
+          this.alertaServicio.MostrarExito(response.message);
+        }
+        if (response?.data?.Token) {
+          this.router.navigate(['/nosotros']);
+        }
+        this.isLoading = false;
+      },
+      error: (error) => {
         this.isLoading = false;
 
-        // Manejo de errores más específico
-        if (error.status === 401) {
-          this.errorMessage = 'Usuario o contraseña incorrectos';
-        } else if (error.status === 0) {
-          this.errorMessage =
-            'Error de conexión. Verifique su conexión a internet';
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
         } else {
-          this.errorMessage = 'Error del servidor. Intente nuevamente';
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
         }
-      },
+
+        this.errorMessage = mensaje;
+      }
     });
   }
 
@@ -216,6 +247,7 @@ export class LoginComponent implements OnInit {
 
   // Método general para subir imágenes
   subirImagen(file: File, campoDestino: string): void {
+    this.isLoading = true;
     const formData = new FormData();
     formData.append('Imagen', file);
     formData.append('CarpetaPrincipal', this.NombreEmpresa);
@@ -223,12 +255,12 @@ export class LoginComponent implements OnInit {
     formData.append('CodigoPropio', this.portadaLogin.CodigoLoginPortada);
     formData.append('CampoPropio', 'CodigoLoginPortada');
     formData.append('NombreCampoImagen', campoDestino);
-  // Mostrar en consola los datos del FormData
-
-    this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
+    // Mostrar en consola los datos del FormData
+    this.loginPortadaServicio.SubirImagen(formData).subscribe({
       next: (response: any) => {
-        if (response && response.Entidad && response.Entidad[campoDestino]) {
-          this.portadaLogin[campoDestino] = response.Entidad[campoDestino];
+        if (response && response.data.Entidad && response.data.Entidad[campoDestino]) {
+
+          this.portadaLogin[campoDestino] = response.data.Entidad[campoDestino];
 
           const datosActualizados = { ...this.portadaLogin };
 
@@ -238,24 +270,47 @@ export class LoginComponent implements OnInit {
 
           this.loginPortadaServicio.Editar(datosActualizados).subscribe({
             next: (updateResponse) => {
-              this.alertaServicio.MostrarExito(
-                'Imagen actualizada correctamente'
-              );
+              if (updateResponse?.tipo === 'Éxito') {
+                this.alertaServicio.MostrarExito(updateResponse.message);
+              }
               this.obtenerPortadaLogin();
               this.modoEdicion = false;
+              this.isLoading = false;
             },
-            error: (updateError) => {
-              this.alertaServicio.MostrarError('Error al actualizar la imagen');
-            },
+            error: (error) => {
+              this.isLoading = false;
+              const tipo = error?.error?.tipo;
+              const mensaje =
+                error?.error?.error?.message ||
+                error?.error?.message ||
+                'Ocurrió un error inesperado.';
+
+              if (tipo === 'Alerta') {
+                this.alertaServicio.MostrarAlerta(mensaje);
+              } else {
+                this.alertaServicio.MostrarError({ error: { message: mensaje } });
+              }
+              this.errorMessage = mensaje;
+            }
           });
         }
       },
       error: (error) => {
-        this.alertaServicio.MostrarError(
-          error,
-          'Error al subir la imagen. Por favor, intente de nuevo.'
-        );
-      },
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
+      }
     });
   }
 }

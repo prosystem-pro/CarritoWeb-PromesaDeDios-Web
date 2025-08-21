@@ -33,7 +33,7 @@ export class EmpresaServicio {
   }
   ConseguirPrimeraEmpresa(): Observable<any | null> {
     return this.Listado().pipe(
-      map(empresas => (empresas && empresas.length > 0 ? empresas[0] : null))
+      map(empresas => (empresas.data && empresas.data.length > 0 ? empresas.data[0] : null))
     );
   }
 }

@@ -10,7 +10,7 @@ import { Producto } from '../Modelos/Producto';
 export class ProductoServicio {
   private Url = `${Entorno.ApiUrl}producto`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   private obtenerHeaders(): HttpHeaders {
     const token = localStorage.getItem('token');
@@ -48,8 +48,11 @@ export class ProductoServicio {
     return this.http.post(`${this.Url}/creareditar`, Datos, { headers: this.obtenerHeaders() });
   }
 
-    // Nuevo método para buscar productos
+  // Nuevo método para buscar productos
   BuscarProductos(tipoBusqueda: number, valorBusqueda: string): Observable<any> {
     return this.http.get(`${this.Url}/buscar/${tipoBusqueda}/${valorBusqueda}`, { headers: this.obtenerHeaders() });
+  }
+  SubirImagen(formData: FormData): Observable<any> {
+    return this.http.post(`${this.Url}/subir-imagen`, formData);
   }
 }

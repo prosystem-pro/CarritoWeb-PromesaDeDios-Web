@@ -15,18 +15,20 @@ import { ServicioCompartido } from '../../../Servicios/ServicioCompartido';
 import { EmpresaServicio } from '../../../Servicios/EmpresaServicio';
 import { AlertaServicio } from '../../../Servicios/Alerta-Servicio';
 import { PermisoServicio } from '../../../Autorizacion/AutorizacionPermiso';
+import { SpinnerGlobalComponent } from '../../../Componentes/spinner-global/spinner-global.component';
 
 @Component({
   selector: 'app-menuCategoria',
-  imports: [NgFor, NgIf, FormsModule, CommonModule, CarruselComponent, SvgDecoradorComponent],
+  imports: [NgFor, NgIf, FormsModule, CommonModule, CarruselComponent, SvgDecoradorComponent, SpinnerGlobalComponent],
   templateUrl: './menuCategoria.component.html',
   styleUrl: './menuCategoria.component.css',
 })
 export class MenuCategoriaComponent implements OnInit {
-  private Url = `${Entorno.ApiUrl}`;
   private NombreEmpresa = `${Entorno.NombreEmpresa}`;
   private textoBusquedaSubscription!: Subscription;
 
+  errorMessage: string = '';
+  isLoading: boolean = false;
   modoEdicion = false;
   mostrarPanelColor = false;
   menuPortada: any = null;
@@ -53,8 +55,6 @@ export class MenuCategoriaComponent implements OnInit {
     imagenFile: null as File | null,
     imagenPreview: null,
   };
-
-  isLoading = true;
   error = false;
 
   coloresPredefinidos = [
@@ -99,10 +99,11 @@ export class MenuCategoriaComponent implements OnInit {
   }
 
   cargarMenuPortada(): void {
+    this.isLoading = true;
     this.menuPortadaServicio.Listado().subscribe({
-      next: (data) => {
-        if (data && data.length > 0) {
-          this.menuPortada = data[0];
+      next: (Respuesta) => {
+        if (Respuesta && Respuesta.data.length > 0) {
+          this.menuPortada = Respuesta.data[0];
           // Actualizar el título principal
           this.tituloPrincipal =
             this.menuPortada.TituloMenu || '';
@@ -110,82 +111,144 @@ export class MenuCategoriaComponent implements OnInit {
             colorClasificacionFondo: this.menuPortada?.ColorFondoNombreClasificacion || '',
             colorClasificacionTexto: this.menuPortada?.ColorNombreClasificacion || '',
           });
+          this.isLoading = false;
         } else {
           this.crearMenuPortadaPorDefecto();
         }
       },
-      error: (err) => {
-        // this.crearMenuPortadaPorDefecto();
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
       },
     });
   }
 
   // Crear MenuPortada si no existe
   private crearMenuPortadaPorDefecto(): void {
-    const menuPortadaDefecto = {
-      CodigoEmpresa: this.codigoEmpresa,
-      UrlImagenNavbar: '',
-      UrlImagenPortadaIzquierdo: '',
-      UrlImagenPortadaDerecho: '',
-      TituloMenu: 'Nuestro Menú',
-      ColorTituloMenu: '#ff9500',
-      UrlImagenMenu: '',
-      ColorContornoImagenClasificacion: '#ff9500',
-      ColorNombreClasificacion: '#000000',
-      ColorFondoNombreClasificacion: '#ff9500',
-      UrlImagenPresentacion: '',
-      Estatus: 1,
-    };
+    this.empresaServicio.Listado().subscribe({
+      next: (Respuesta) => {
+        if (!Respuesta || Respuesta.data.length === 0) {
+          console.error('No hay empresas disponibles');
+          return;
+        }
+        const primeraEmpresa = Respuesta.data[0];
+        const codigoEmpresa = primeraEmpresa.CodigoEmpresa;
 
-    this.menuPortadaServicio.Crear(menuPortadaDefecto).subscribe({
-      next: (response) => {
-        console.log('MenuPortada creado exitosamente:', response);
-        this.menuPortada = response.Entidad || response;
-        this.tituloPrincipal = this.menuPortada.TituloMenu || '';
-        this.servicioCompartido.setDatosClasificacion({
-          colorClasificacionFondo: this.menuPortada?.ColorFondoNombreClasificacion || '',
-          colorClasificacionTexto: this.menuPortada?.ColorNombreClasificacion || '',
+        const menuPortadaDefecto = {
+          CodigoEmpresa: codigoEmpresa,
+          UrlImagenNavbar: '',
+          UrlImagenPortadaIzquierdo: '',
+          UrlImagenPortadaDerecho: '',
+          TituloMenu: 'Nuestro Menú',
+          ColorTituloMenu: '#ff9500',
+          UrlImagenMenu: '',
+          ColorContornoImagenClasificacion: '#ff9500',
+          ColorNombreClasificacion: '#000000',
+          ColorFondoNombreClasificacion: '#ff9500',
+          UrlImagenPresentacion: '',
+          Estatus: 1,
+        };
+
+        this.menuPortadaServicio.Crear(menuPortadaDefecto).subscribe({
+          next: (response) => {
+            if (response?.tipo === 'Éxito') {
+              this.alertaServicio.MostrarExito(response.message);
+            }
+            this.menuPortada = response.data?.Entidad || response;
+            this.tituloPrincipal = this.menuPortada.TituloMenu || '';
+            this.servicioCompartido.setDatosClasificacion({
+              colorClasificacionFondo: this.menuPortada?.ColorFondoNombreClasificacion || '',
+              colorClasificacionTexto: this.menuPortada?.ColorNombreClasificacion || '',
+            });
+            this.isLoading = false;
+          },
+          error: (error) => {
+            this.isLoading = false;
+            const tipo = error?.error?.tipo;
+            const mensaje =
+              error?.error?.error?.message ||
+              error?.error?.message ||
+              'Ocurrió un error inesperado.';
+
+            if (tipo === 'Alerta') {
+              this.alertaServicio.MostrarAlerta(mensaje);
+            } else {
+              this.alertaServicio.MostrarError({ error: { message: mensaje } });
+            }
+
+            this.errorMessage = mensaje;
+            this.menuPortada = menuPortadaDefecto;
+            this.tituloPrincipal = menuPortadaDefecto.TituloMenu;
+          }
         });
       },
-      error: (error) => {
-        console.error('Error al crear MenuPortada:', error);
-        // Usar datos por defecto para que la interfaz no se rompa
-        this.menuPortada = menuPortadaDefecto;
-        this.tituloPrincipal = menuPortadaDefecto.TituloMenu;
+      error: (err) => {
+        console.error('Error al obtener empresas', err);
+        // manejar error de listado de empresas si es necesario
       }
     });
   }
 
+
   cargarClasificaciones(): void {
     this.isLoading = true;
     this.clasificacionProductoServicio.Listado().subscribe({
-      next: (data: any[]) => {
-        console.log('Clasificaciones recibidas de la API:', data);
-        this.clasificaciones = data.filter(
-          (item) =>
+      next: (Respuesta: any) => {
+        // Asegurarte de que lo que llegue sea un array
+        const arreglo = Array.isArray(Respuesta) ? Respuesta : Respuesta.data || [];
+
+        this.clasificaciones = arreglo.filter(
+          (item: any) =>
             item.NombreClasificacionProducto &&
             item.NombreClasificacionProducto.trim() !== '' &&
             item.CodigoClasificacionProducto !== 0
         );
+
         this.clasificacionesOriginales = [...this.clasificaciones];
         this.isLoading = false;
       },
-      error: (err) => {
-        console.error('Error al obtener clasificaciones:', err);
-        this.error = true;
+      error: (error) => {
         this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
       },
     });
   }
 
+
   cargarDatosCarrusel(): void {
+    this.isLoading = true;
     this.carruselServicio.Listado().subscribe({
-      next: (data) => {
+      next: (Respuesta) => {
         // Buscar carrusel únicamente por ubicación 'MenuCategoria'
         let carruselMenuCategoria = null;
-
-        if (data && data.length > 0) {
-          carruselMenuCategoria = data.find(c => c.Ubicacion === 'MenuCategoria');
+        if (Respuesta && Respuesta.data.length > 0) {
+          carruselMenuCategoria = Respuesta.data.find(
+            (c: any) => c.Ubicacion === 'MenuCategoria'
+          );
         }
 
         if (carruselMenuCategoria) {
@@ -197,14 +260,28 @@ export class MenuCategoriaComponent implements OnInit {
           this.crearCarruselPorDefecto();
         }
       },
-      error: (err) => {
-        // this.crearCarruselPorDefecto();
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
       }
     });
   }
 
   // Crear Carrusel si no existe
   private crearCarruselPorDefecto(): void {
+    this.isLoading = true;
     const carruselDefecto = {
       CodigoEmpresa: this.codigoEmpresa,
       NombreCarrusel: 'Galería de Menú',
@@ -215,14 +292,30 @@ export class MenuCategoriaComponent implements OnInit {
 
     this.carruselServicio.Crear(carruselDefecto).subscribe({
       next: (response) => {
-        console.log('Carrusel creado exitosamente:', response);
-        this.carruselData = response.Entidad || response;
+        if (response?.tipo === 'Éxito') {
+          this.alertaServicio.MostrarExito(response.message);
+        }
+        this.carruselData = response.data.Entidad || response;
         this.codigoCarrusel = this.carruselData.CodigoCarrusel;
         this.titulo = this.carruselData.NombreCarrusel;
         this.cargarImagenesCarrusel();
+        this.isLoading = false;
       },
       error: (error) => {
-        console.error('Error al crear carrusel:', error);
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
         // Usar datos por defecto para que la interfaz no se rompa
         this.carruselData = carruselDefecto;
         this.detallesCarrusel = [];
@@ -235,10 +328,25 @@ export class MenuCategoriaComponent implements OnInit {
     if (this.carruselData?.CodigoCarrusel) {
       this.carruselImagenServicio.ListadoCarrusel(this.carruselData.CodigoCarrusel).subscribe({
         next: (data) => {
-          this.detallesCarrusel = data;
+          this.detallesCarrusel = data.data;
           this.datosListos = true;
+          this.isLoading = false;
         },
-        error: (err) => {
+        error: (error) => {
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.alertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.alertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+
+          this.errorMessage = mensaje;
           this.detallesCarrusel = [];
           this.datosListos = true;
         }
@@ -248,12 +356,24 @@ export class MenuCategoriaComponent implements OnInit {
 
   cargarDataEmpresa(): void {
     this.empresaServicio.Listado().subscribe({
-      next: (data) => {
-        this.empresaData = data[0];
+      next: (Respuesta) => {
+        this.empresaData = Respuesta.data[0];
         this.codigoEmpresa = this.empresaData.CodigoEmpresa;
       },
-      error: (err) => {
-        console.error('Error al obtener datos de la empresa:', err);
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
       }
     });
   }
@@ -372,6 +492,7 @@ export class MenuCategoriaComponent implements OnInit {
   }
 
   subirImagenDecorativo(file: File, campoDestino: string): void {
+    this.isLoading = true;
     const formData = new FormData();
     formData.append('Imagen', file);
     formData.append('CarpetaPrincipal', this.NombreEmpresa);
@@ -382,15 +503,10 @@ export class MenuCategoriaComponent implements OnInit {
     formData.append('CampoPropio', 'CodigoMenuPortada');
     formData.append('NombreCampoImagen', campoDestino);
 
-    this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
+    this.menuPortadaServicio.SubirImagen(formData).subscribe({
       next: (response: any) => {
-        if (response?.Alerta) {
-          this.alertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-          return;
-        }
-
-        if (response && response.Entidad && response.Entidad[campoDestino]) {
-          this.menuPortada[campoDestino] = response.Entidad[campoDestino];
+        if (response && response.data.Entidad && response.data.Entidad[campoDestino]) {
+          this.menuPortada[campoDestino] = response.data.Entidad[campoDestino];
           const {
             UrlImagenNavbar,
             UrlImagenPortadaIzquierdo,
@@ -401,32 +517,52 @@ export class MenuCategoriaComponent implements OnInit {
           } = this.menuPortada;
 
           this.menuPortadaServicio.Editar(datosActualizados).subscribe({
-            next: () => {
-              this.alertaServicio.MostrarExito('Imagen actualizada correctamente', 'Éxito');
-                  this.cargarMenuPortada();
+            next: (Respuesta) => {
+              if (Respuesta?.tipo === 'Éxito') {
+                this.alertaServicio.MostrarExito(Respuesta.message);
+              }
+              this.cargarMenuPortada();
+              this.isLoading = false;
               this.modoEdicion = false;
             },
             error: (error) => {
-              if (error?.error?.Alerta) {
-                this.alertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
+              this.isLoading = false;
+              const tipo = error?.error?.tipo;
+              const mensaje =
+                error?.error?.error?.message ||
+                error?.error?.message ||
+                'Ocurrió un error inesperado.';
+
+              if (tipo === 'Alerta') {
+                this.alertaServicio.MostrarAlerta(mensaje);
               } else {
-                this.alertaServicio.MostrarError('Error al actualizar la imagen');
+                this.alertaServicio.MostrarError({ error: { message: mensaje } });
               }
+              this.errorMessage = mensaje;
             }
           });
         }
       },
       error: (error) => {
-        if (error?.error?.Alerta) {
-          this.alertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
         } else {
-          this.alertaServicio.MostrarError('Error al subir la imagen');
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
         }
+        this.errorMessage = mensaje;
       }
     });
   }
 
   subirImagenNuevaCategoria() {
+    this.isLoading = true;
     if (this.nuevaCategoria.titulo && this.nuevaCategoria.imagenFile) {
       // Verificar si ya existe una clasificacion con el mismo nombre
       if (
@@ -440,8 +576,6 @@ export class MenuCategoriaComponent implements OnInit {
         return;
       }
 
-      this.isLoadingCrear = true;
-
       const formData = new FormData();
       formData.append('Imagen', this.nuevaCategoria.imagenFile);
       formData.append('CarpetaPrincipal', this.NombreEmpresa);
@@ -452,21 +586,15 @@ export class MenuCategoriaComponent implements OnInit {
       formData.append('CampoPropio', 'CodigoClasificacionProducto');
       formData.append('NombreCampoImagen', 'UrlImagen');
 
-      this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
+      this.clasificacionProductoServicio.SubirImagen(formData).subscribe({
         next: (response: any) => {
-          if (response?.Alerta) {
-            this.isLoadingCrear = false;
-            this.alertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-            return;
-          }
-
-          if (response && response.Entidad) {
+          if (response && response.data.Entidad) {
             // Construir objeto con los datos recibidos
             const nuevaClasificacionCompleta = {
-              CodigoClasificacionProducto: response.Entidad.CodigoClasificacionProducto,
+              CodigoClasificacionProducto: response.data.Entidad.CodigoClasificacionProducto,
               CodigoEmpresa: this.codigoEmpresa,
               NombreClasificacionProducto: this.nuevaCategoria.titulo,
-              UrlImagen: response.Entidad.UrlImagen || '',
+              UrlImagen: response.data.Entidad.UrlImagen || '',
               Estatus: 1,
             };
 
@@ -474,19 +602,28 @@ export class MenuCategoriaComponent implements OnInit {
             const { UrlImagen, ...datosActualizados } = nuevaClasificacionCompleta;
 
             this.clasificacionProductoServicio.Editar(datosActualizados).subscribe({
-              next: () => {
-                this.isLoadingCrear = false;
-                this.alertaServicio.MostrarExito('Nueva categoría creada correctamente', 'Éxito');
+              next: (Respuesta) => {
+                if (Respuesta?.tipo === 'Éxito') {
+                  this.alertaServicio.MostrarExito(Respuesta.message);
+                }
+                this.isLoading = false;
                 this.cargarClasificaciones();
                 this.resetNuevaCategoria();
               },
-              error: (updateError) => {
-                this.isLoadingCrear = false;
-                if (updateError?.error?.Alerta) {
-                  this.alertaServicio.MostrarAlerta(updateError.error.Alerta, 'Atención');
+              error: (error) => {
+                this.isLoading = false;
+                const tipo = error?.error?.tipo;
+                const mensaje =
+                  error?.error?.error?.message ||
+                  error?.error?.message ||
+                  'Ocurrió un error inesperado.';
+
+                if (tipo === 'Alerta') {
+                  this.alertaServicio.MostrarAlerta(mensaje);
                 } else {
-                  this.alertaServicio.MostrarError(updateError, 'Error al crear la categoría');
+                  this.alertaServicio.MostrarError({ error: { message: mensaje } });
                 }
+                this.errorMessage = mensaje;
                 this.cargarClasificaciones();
               },
             });
@@ -496,12 +633,19 @@ export class MenuCategoriaComponent implements OnInit {
           }
         },
         error: (error) => {
-          this.isLoadingCrear = false;
-          if (error?.error?.Alerta) {
-            this.alertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.alertaServicio.MostrarAlerta(mensaje);
           } else {
-            this.alertaServicio.MostrarError(error, 'Error al subir la imagen. Por favor, intente de nuevo.');
+            this.alertaServicio.MostrarError({ error: { message: mensaje } });
           }
+          this.errorMessage = mensaje;
         },
       });
     }
@@ -519,6 +663,7 @@ export class MenuCategoriaComponent implements OnInit {
   }
 
   subirImagen(file: File, clasificacion: any): void {
+    this.isLoading = true;
     const formData = new FormData();
     formData.append('Imagen', file);
     formData.append('CarpetaPrincipal', this.NombreEmpresa);
@@ -529,29 +674,36 @@ export class MenuCategoriaComponent implements OnInit {
     formData.append('CampoPropio', 'CodigoClasificacionProducto');
     formData.append('NombreCampoImagen', 'UrlImagen');
 
-    this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
+    this.clasificacionProductoServicio.SubirImagen(formData).subscribe({
       next: (response: any) => {
-        if (response?.Alerta) {
-          this.alertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-          return;
-        }
-        if (response && response.Entidad && response.Entidad.UrlImagen) {
+        if (response && response.data.Entidad && response.data.Entidad.UrlImagen) {
           // Actualizar la imagen localmente
-          clasificacion.UrlImagen = response.Entidad.UrlImagen;
+          clasificacion.UrlImagen = response.data.Entidad.UrlImagen;
 
           // Excluir UrlImagen para la actualización al backend
           const { UrlImagen, ...datosActualizados } = clasificacion;
           this.clasificacionProductoServicio.Editar(datosActualizados).subscribe({
-            next: () => {
-              this.alertaServicio.MostrarExito('Imagen actualizada correctamente', 'Éxito');
+            next: (response) => {
+              if (response?.tipo === 'Éxito') {
+                this.alertaServicio.MostrarExito(response.message);
+              }
+              this.isLoading = false;
               this.cargarClasificaciones();
             },
-            error: (updateError) => {
-              if (updateError?.error?.Alerta) {
-                this.alertaServicio.MostrarAlerta(updateError.error.Alerta, 'Atención');
+            error: (error) => {
+              this.isLoading = false;
+              const tipo = error?.error?.tipo;
+              const mensaje =
+                error?.error?.error?.message ||
+                error?.error?.message ||
+                'Ocurrió un error inesperado.';
+
+              if (tipo === 'Alerta') {
+                this.alertaServicio.MostrarAlerta(mensaje);
               } else {
-                this.alertaServicio.MostrarError('Error al actualizar la imagen');
+                this.alertaServicio.MostrarError({ error: { message: mensaje } });
               }
+              this.errorMessage = mensaje;
             }
           });
         } else {
@@ -561,12 +713,19 @@ export class MenuCategoriaComponent implements OnInit {
         }
       },
       error: (error) => {
-        console.error('Error al subir la imagen', error);
-        if (error?.error?.Alerta) {
-          this.alertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
         } else {
-          this.alertaServicio.MostrarError(error, 'Error al subir la imagen. Por favor, intente de nuevo.');
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
         }
+        this.errorMessage = mensaje;
       },
     });
   }
@@ -591,12 +750,15 @@ export class MenuCategoriaComponent implements OnInit {
       'Esta acción no se puede deshacer.'
     ).then((confirmado) => {
       if (confirmado) {
+        this.isLoading = true;
         this.clasificacionProductoServicio
           .Eliminar(clasificacion.CodigoClasificacionProducto)
           .subscribe({
             next: (response) => {
-              this.alertaServicio.MostrarExito('Categoría eliminada correctamente');
-
+              if (response?.tipo === 'Éxito') {
+                this.alertaServicio.MostrarExito(response.message);
+              }
+              this.isLoading = false;
               const index = this.clasificaciones.findIndex(
                 (c) => c.CodigoClasificacionProducto === clasificacion.CodigoClasificacionProducto
               );
@@ -606,7 +768,19 @@ export class MenuCategoriaComponent implements OnInit {
               }
             },
             error: (error) => {
-              this.alertaServicio.MostrarError('Error al eliminar la categoría');
+              this.isLoading = false;
+              const tipo = error?.error?.tipo;
+              const mensaje =
+                error?.error?.error?.message ||
+                error?.error?.message ||
+                'Ocurrió un error inesperado.';
+
+              if (tipo === 'Alerta') {
+                this.alertaServicio.MostrarAlerta(mensaje);
+              } else {
+                this.alertaServicio.MostrarError({ error: { message: mensaje } });
+              }
+              this.errorMessage = mensaje;
             },
           });
       }
@@ -623,6 +797,7 @@ export class MenuCategoriaComponent implements OnInit {
 
   // EXCLUIR URLs de imágenes en todas las actualizaciones
   actualizarMenuPortada(): void {
+    this.isLoading = true;
     if (this.menuPortada) {
       const {
         UrlImagenNavbar,
@@ -636,24 +811,55 @@ export class MenuCategoriaComponent implements OnInit {
       if (this.menuPortada.CodigoMenuPortada === 0) {
         this.menuPortadaServicio.Crear(datosActualizados).subscribe({
           next: (response) => {
-            console.log('MenuPortada creado correctamente', response);
+            if (response?.tipo === 'Éxito') {
+              this.alertaServicio.MostrarExito(response.message);
+            }
             if (response && response.Entidad) {
               this.menuPortada.CodigoMenuPortada = response.Entidad.CodigoMenuPortada;
             }
+            this.isLoading = false;
           },
           error: (error) => {
-            console.error('Error al crear MenuPortada', error);
-            this.crearEditarMenuPortada();
+            this.isLoading = false;
+            const tipo = error?.error?.tipo;
+            const mensaje =
+              error?.error?.error?.message ||
+              error?.error?.message ||
+              'Ocurrió un error inesperado.';
+
+            if (tipo === 'Alerta') {
+              this.alertaServicio.MostrarAlerta(mensaje);
+            } else {
+              this.alertaServicio.MostrarError({ error: { message: mensaje } });
+            }
+            this.errorMessage = mensaje;
+
           },
         });
       } else {
         this.menuPortadaServicio.Editar(datosActualizados).subscribe({
           next: (response) => {
-            console.log('MenuPortada actualizado correctamente', response);
+            if (response?.tipo === 'Éxito') {
+              this.alertaServicio.MostrarExito(response.message);
+            }
+            this.isLoading = false;
           },
           error: (error) => {
-            console.error('Error al actualizar MenuPortada', error);
-            this.crearEditarMenuPortada();
+            console.log('ERRORDDDD', error)
+            this.isLoading = false;
+            const tipo = error?.error?.tipo;
+            const mensaje =
+              error?.error?.error?.message ||
+              error?.error?.message ||
+              'Ocurrió un error inesperado.';
+
+            if (tipo === 'Alerta') {
+              this.alertaServicio.MostrarAlerta(mensaje);
+            } else {
+              this.alertaServicio.MostrarError({ error: { message: mensaje } });
+            }
+            this.errorMessage = mensaje;
+
           },
         });
       }
@@ -673,14 +879,24 @@ export class MenuCategoriaComponent implements OnInit {
 
       this.menuPortadaServicio.CrearEditar(datosActualizados).subscribe({
         next: (response) => {
-          console.log('MenuPortada creado/actualizado correctamente', response);
-          if (response && response.Entidad) {
-            this.menuPortada.CodigoMenuPortada = response.Entidad.CodigoMenuPortada;
+          if (response && response.data.Entidad) {
+            this.menuPortada.CodigoMenuPortada = response.data.Entidad.CodigoMenuPortada;
           }
         },
         error: (error) => {
-          console.error('Error al crear/actualizar MenuPortada', error);
-          this.alertaServicio.MostrarError('Error al actualizar la configuración de la portada');
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.alertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.alertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+          this.errorMessage = mensaje;
         },
       });
     }

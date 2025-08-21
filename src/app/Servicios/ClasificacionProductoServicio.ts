@@ -10,7 +10,7 @@ import { ClasificacionProducto } from '../Modelos/ClasificacionProducto';
 export class ClasificacionProductoServicio {
   private Url = `${Entorno.ApiUrl}clasificacionproducto`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   private obtenerHeaders(): HttpHeaders {
     const token = localStorage.getItem('token');
@@ -20,10 +20,12 @@ export class ClasificacionProductoServicio {
     });
   }
 
+  // Listado(): Observable<any> {
+  //   return this.http.get(`${this.Url}/listado`, { headers: this.obtenerHeaders() });
+  // }
   Listado(): Observable<any> {
-    return this.http.get(`${this.Url}/listado`, { headers: this.obtenerHeaders() });
+    return this.http.get(`${this.Url}/listado`);
   }
-
   Crear(Datos: ClasificacionProducto): Observable<any> {
     return this.http.post(`${this.Url}/crear`, Datos, { headers: this.obtenerHeaders() });
   }
@@ -43,9 +45,12 @@ export class ClasificacionProductoServicio {
   CrearEditar(Datos: ClasificacionProducto): Observable<any> {
     return this.http.post(`${this.Url}/creareditar`, Datos, { headers: this.obtenerHeaders() });
   }
-
   // Nuevo método para buscar clasificaciones
   BuscarClasificaciones(tipoBusqueda: number, valorBusqueda: string): Observable<any> {
     return this.http.get(`${this.Url}/buscar/${tipoBusqueda}/${valorBusqueda}`, { headers: this.obtenerHeaders() });
+  }
+
+  SubirImagen(formData: FormData): Observable<any> {
+    return this.http.post(`${this.Url}/subir-imagen`, formData);
   }
 }

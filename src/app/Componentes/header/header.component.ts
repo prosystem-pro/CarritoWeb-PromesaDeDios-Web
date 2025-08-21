@@ -16,18 +16,19 @@ import { RedSocialImagenServicio } from '../../Servicios/RedSocialImagenServicio
 import { CarritoEstadoService } from '../../Servicios/CarritoEstadoServicio';
 import { EmpresaServicio } from '../../Servicios/EmpresaServicio'; // Importar el servicio
 import { MenuPortadaServicio } from '../../Servicios/MenuPortadaServicio';
+import { SpinnerGlobalComponent } from '../spinner-global/spinner-global.component';
 
 @Component({
   selector: 'app-header',
-  imports: [NgStyle, CommonModule, FormsModule, NgIf, CarritoComponent],
+  imports: [NgStyle, CommonModule, FormsModule, NgIf, CarritoComponent, SpinnerGlobalComponent],
   templateUrl: './header.component.html',
   styleUrl: './header.component.css',
   standalone: true,
 })
 export class HeaderComponent implements OnInit, OnDestroy {
-  private Url = `${Entorno.ApiUrl}`;
   private NombreEmpresa = `${Entorno.NombreEmpresa}`;
   private subscription!: Subscription;
+  isLoading: boolean = false;
   primaryColor: string = '';
   Datos: any = null;
   modoEdicion: boolean = false;
@@ -42,6 +43,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   Data: any = null;
   colorNavbarEIcono: string = '';
   colorTextoNavbar: string = '';
+  errorMessage: string = '';
 
   @ViewChild('navbarCollapse') navbarCollapse!: ElementRef;
 
@@ -58,7 +60,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     private carritoEstadoService: CarritoEstadoService,
     private ReporteRedSocialServicio: ReporteRedSocialServicio,
     private menuPortadaServicio: MenuPortadaServicio,
-    private EmpresaServicio: EmpresaServicio // Inyectar el servicio
+    private EmpresaServicio: EmpresaServicio
   ) { }
 
   ngOnInit(): void {
@@ -93,10 +95,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
   // Modificar el método Listado para crear navbar si no existe
   Listado(): void {
     this.Servicio.Listado().subscribe({
-      next: (data) => {
-        if (data && data.length > 0) {
+      next: (Respuesta) => {
+
+        if (Respuesta && Respuesta.data && Respuesta.data.length > 0) {
           // Existe el navbar, usar datos existentes
-          this.Datos = data[0];
+          this.Datos = Respuesta.data[0];
           this.actualizarEstilosCSS();
           this.servicioCompartido.setDatosHeader({
             urlImagenCarrito: this.Datos.UrlImagenCarrito,
@@ -148,21 +151,34 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
     this.Servicio.Crear(navbarDefecto).subscribe({
       next: (response) => {
-        console.log('Navbar creado exitosamente:', response);
-        this.AlertaServicio.MostrarExito('Configuración de navbar creada correctamente');
+        if (response?.tipo === 'Éxito') {
+          this.AlertaServicio.MostrarExito(response.message);
+        }
 
         // Asignar los datos del navbar creado
-        this.Datos = response.Entidad || response;
+        this.Datos = response.data.Entidad || response;
         this.actualizarEstilosCSS();
         this.servicioCompartido.setDatosHeader({
           urlImagenCarrito: this.Datos.UrlImagenCarrito,
           textoBuscador: this.Datos.TextoBuscador,
           urlImagenLupa: this.Datos.UrlImagenBuscador,
         });
+        this.Listado();
       },
       error: (error) => {
-        console.error('Error al crear navbar por defecto:', error);
-        this.AlertaServicio.MostrarError('Error al crear la configuración del navbar');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
 
         // Como fallback, usar datos temporales para que la interfaz no se rompa
         this.Datos = navbarDefecto;
@@ -194,18 +210,27 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
     // Si no existe CodigoNavbar, primero crear el navbar
     if (!this.Datos.CodigoNavbar) {
-      this.AlertaServicio.MostrarAlerta('Creando configuración de navbar...', 'Por favor, espere');
-
       // Crear el navbar primero y luego subir la imagen
       this.Servicio.Crear(this.Datos).subscribe({
         next: (response) => {
-          this.Datos = response.Entidad || response;
+          this.Datos = response.data.Entidad || response;
           // Ahora que tenemos el CodigoNavbar, proceder a subir la imagen
           this.ejecutarSubidaImagen(file, campoDestino);
         },
         error: (error) => {
-          console.error('Error al crear navbar antes de subir imagen:', error);
-          this.AlertaServicio.MostrarError('Error al crear la configuración del navbar');
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.AlertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+          this.errorMessage = mensaje;
         }
       });
     } else {
@@ -216,6 +241,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   // Nuevo método para ejecutar la subida de imagen
   private ejecutarSubidaImagen(file: File, campoDestino: string): void {
+    this.isLoading = true;
     const formData = new FormData();
     formData.append('Imagen', file);
     formData.append('CarpetaPrincipal', this.NombreEmpresa);
@@ -226,65 +252,64 @@ export class HeaderComponent implements OnInit, OnDestroy {
     formData.append('CampoPropio', 'CodigoNavbar');
     formData.append('NombreCampoImagen', campoDestino);
 
-    this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
+    this.Servicio.SubirImagen(formData).subscribe({
       next: (response: any) => {
-      if (response?.Alerta) {
-        this.AlertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-        return;
-      }
+        if (response && response.data.Entidad && response.data.Entidad[campoDestino]) {
+          this.Datos[campoDestino] = response.data.Entidad[campoDestino];
 
-      this.AlertaServicio.MostrarAlerta('Cargando imagen...', 'Por favor, espere');
+          if (campoDestino === 'UrlImagenBuscador') {
+            document.documentElement.style.setProperty(
+              '--url-imagen-buscador',
+              `url(${response.data.Entidad[campoDestino]})`
+            );
+          }
 
-      if (response && response.Entidad && response.Entidad[campoDestino]) {
-        this.Datos[campoDestino] = response.Entidad[campoDestino];
+          const { UrlImagenBuscador, UrlImagenCarrito, UrlLogo, ...datosLimpios } = this.Datos;
 
-        if (campoDestino === 'UrlImagenBuscador') {
-          document.documentElement.style.setProperty(
-            '--url-imagen-buscador',
-            `url(${response.Entidad[campoDestino]})`
-          );
+          this.Servicio.Editar(datosLimpios).subscribe({
+            next: (Respuesta) => {
+              if (Respuesta?.tipo === 'Éxito') {
+                this.AlertaServicio.MostrarExito(Respuesta.message);
+              }
+              this.Listado();
+              this.modoEdicion = false;
+              this.isLoading = false;
+            },
+            error: (error) => {
+              this.isLoading = false;
+              const tipo = error?.error?.tipo;
+              const mensaje =
+                error?.error?.error?.message ||
+                error?.error?.message ||
+                'Ocurrió un error inesperado.';
+
+              if (tipo === 'Alerta') {
+                this.AlertaServicio.MostrarAlerta(mensaje);
+              } else {
+                this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+              }
+              this.errorMessage = mensaje;
+            },
+          });
         }
+      },
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
 
-        const { UrlImagenBuscador, UrlImagenCarrito, UrlLogo, ...datosLimpios } = this.Datos;
-
-        this.Servicio.Editar(datosLimpios).subscribe({
-          next: () => {
-            this.AlertaServicio.MostrarExito('Imagen actualizada correctamente');
-            this.Listado();
-            this.modoEdicion = false;
-          },
-          error: (error) => {
-            if (error?.error?.Alerta) {
-              this.AlertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
-            } else {
-              this.AlertaServicio.MostrarError('Error al actualizar el campo de imagen');
-            }
-          },
-        });
-
-      } else {
-        const imageUrl =
-          response.UrlImagenPortada ||
-          response.url ||
-          (response.Entidad ? response.Entidad.UrlImagenPortada : null);
-
-        if (imageUrl) {
-          this.Datos[campoDestino] = imageUrl;
-          this.AlertaServicio.MostrarExito('Imagen subida correctamente');
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
         } else {
-          this.AlertaServicio.MostrarAlerta('No se pudo obtener la URL de la imagen');
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
         }
-      }
-    },
-    error: (error) => {
-      if (error?.error?.Alerta) {
-        this.AlertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
-      } else {
-        this.AlertaServicio.MostrarError('Error al subir la imagen. Por favor, intente de nuevo.');
-      }
-    },
-  });
-}
+        this.errorMessage = mensaje;
+      },
+    });
+  }
 
   // Los demás métodos permanecen igual...
   ReportarRedSocial(codigo: number | undefined): void {
@@ -331,11 +356,23 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   cargarRedesSociales(): void {
     this.redSocialServicio.Listado('Navbar').subscribe({
-      next: (data) => {
-        this.RedeSocial = data.filter((red: any) => red.Estatus === 1);
+      next: (Respuesta) => {
+        this.RedeSocial = Respuesta.data.filter((red: any) => red.Estatus === 1);
       },
       error: (error) => {
-        console.error('Error al cargar redes sociales:', error);
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
       }
     });
   }
@@ -376,6 +413,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   subirImagenRedSocial(file: File, codigoRedSocial: number, redSocial: any): void {
+    this.isLoading = true;
     const formData = new FormData();
     formData.append('Imagen', file);
     formData.append('CarpetaPrincipal', this.NombreEmpresa);
@@ -395,47 +433,53 @@ export class HeaderComponent implements OnInit, OnDestroy {
     formData.append('CampoPropio', 'CodigoRedSocialImagen');
     formData.append('NombreCampoImagen', 'UrlImagen');
 
-    this.http.post(`${this.Url}subir-imagen`, formData)
+    this.redSocialImagenServicio.SubirImagen(formData)
       .subscribe({
         next: (response: any) => {
-          if (response?.Alerta) {
-            this.AlertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-            return;
-          }
-
-          if (response && response.Entidad && response.Entidad.UrlImagen) {
+          if (response && response.data.Entidad && response.data.Entidad.UrlImagen) {
+            console.log('PROCESAR IMAGEN 1')
             this.procesarRespuestaImagen(codigoRedSocial, response, redSocial);
           } else {
-            const imageUrl = response.UrlImagenPortada ||
+            const imageUrl = response.data.UrlImagenPortada ||
               response.url ||
-              (response.Entidad ? response.Entidad.UrlImagenPortada : null);
+              (response.data.Entidad ? response.data.Entidad.UrlImagenPortada : null);
 
             if (imageUrl) {
+              console.log('pROCESAR IMAGEN 2')
               this.procesarRespuestaImagen(codigoRedSocial, { Entidad: { UrlImagen: imageUrl } }, redSocial);
             } else {
+              this.isLoading = false;
               this.AlertaServicio.MostrarError('Error al obtener la URL de la imagen');
             }
           }
         },
         error: (error) => {
-          if (error?.error?.Alerta) {
-            this.AlertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.AlertaServicio.MostrarAlerta(mensaje);
           } else {
-            this.AlertaServicio.MostrarError('Error al subir la imagen');
+            this.AlertaServicio.MostrarError({ error: { message: mensaje } });
           }
+          this.errorMessage = mensaje;
           this.cargarRedesSociales();
         }
       });
   }
   procesarRespuestaImagen(codigoRedSocial: number, response: any, redSocial: any): void {
-    const urlImagen = response.Entidad.UrlImagen;
+    const urlImagen = response.data.Entidad.UrlImagen;
 
     const imagenExistente = redSocial.Imagenes?.find((img: any) => img.Ubicacion === 'Navbar');
 
     if (imagenExistente && imagenExistente.CodigoRedSocialImagen) {
       this.actualizarRegistroRedSocialImagen(imagenExistente.CodigoRedSocialImagen, urlImagen);
     } else {
-      const codigoImagenCreada = response.Entidad.CodigoRedSocialImagen;
+      const codigoImagenCreada = response.data.Entidad.CodigoRedSocialImagen;
 
       if (codigoImagenCreada) {
         this.actualizarRegistroRedSocialImagen(codigoImagenCreada, urlImagen);
@@ -454,17 +498,32 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
     this.redSocialImagenServicio.Crear(datosNuevos).subscribe({
       next: (response) => {
-        this.AlertaServicio.MostrarExito('Imagen de red social creada correctamente');
+        if (response?.tipo === 'Éxito') {
+          this.AlertaServicio.MostrarExito(response.message);
+        }
         this.cargarRedesSociales();
       },
       error: (error) => {
-        this.AlertaServicio.MostrarError('Error al crear la imagen de la red social');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
         this.cargarRedesSociales();
       }
     });
   }
 
   actualizarRegistroRedSocialImagen(codigoRedSocialImagen: number, urlImagen: string): void {
+    console.log('AQUI TOY')
     const datosActualizados = {
       CodigoRedSocialImagen: codigoRedSocialImagen,
       Ubicacion: 'Navbar',
@@ -473,11 +532,26 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
     this.redSocialImagenServicio.Editar(datosActualizados).subscribe({
       next: (response) => {
-        this.AlertaServicio.MostrarExito('Imagen de red social actualizada correctamente');
+        if (response?.tipo === 'Éxito') {
+          this.AlertaServicio.MostrarExito(response.message);
+        }
+        this.isLoading = false;
         setTimeout(() => this.cargarRedesSociales(), 500);
       },
       error: (error) => {
-        this.AlertaServicio.MostrarError('Error al actualizar la imagen de la red social');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
         this.cargarRedesSociales();
       }
     });
@@ -550,14 +624,27 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
       this.Servicio.Editar(datosActualizados).subscribe({
         next: (response) => {
-          this.AlertaServicio.MostrarExito('Cambios guardados correctamente');
+          if (response?.tipo === 'Éxito') {
+            this.AlertaServicio.MostrarExito(response.message);
+          }
           this.modoEdicion = false;
           document.body.classList.remove('modoEdicion');
           this.datosOriginales = null;
         },
         error: (error) => {
-          console.error('Error al guardar los cambios', error);
-          this.AlertaServicio.MostrarAlerta('Error al guardar los cambios. Por favor, intente de nuevo.');
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.AlertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+          this.errorMessage = mensaje;
         },
       });
     } else {

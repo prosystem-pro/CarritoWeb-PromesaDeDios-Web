@@ -9,6 +9,7 @@ import { Carrusel } from '../../Modelos/Carrusel';
 import { CarruselServicio } from '../../Servicios/CarruselServicio';
 import { AlertaServicio } from '../../Servicios/Alerta-Servicio';
 import { PermisoServicio } from '../../Autorizacion/AutorizacionPermiso';
+import { SpinnerGlobalComponent } from '../spinner-global/spinner-global.component';
 
 interface CarruselItem {
   CodigoCarruselImagen: number;
@@ -36,7 +37,7 @@ interface NuevaImagen {
 
 @Component({
   selector: 'app-carrusel',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpinnerGlobalComponent],
   templateUrl: './carrusel.component.html',
   styleUrl: './carrusel.component.css'
 })
@@ -52,7 +53,8 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input() autoplayInterval: number = 2000;
 
   @ViewChild('carouselContainer') carouselContainer!: ElementRef<HTMLElement>;
-
+  errorMessage: string = '';
+  isLoading: boolean = false;
   currentIndex = 0;
   totalItems = 0;
   itemsPerView = 1;
@@ -141,9 +143,9 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
   cargarDatosCarrusel(): void {
     this.carruselServicio.ObtenerPorCodigo(this.codigoCarrusel)
       .subscribe({
-        next: (data) => {
-          this.carruselActual = data;
-          this.title = data.NombreCarrusel || '';
+        next: (Respuesta) => {
+          this.carruselActual = Respuesta.data;
+          this.title = Respuesta.data.NombreCarrusel || '';
         },
         error: (error) => {
           console.error('Error al cargar datos del carrusel:', error);
@@ -523,13 +525,11 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   subirImagenCarrusel(): void {
+    this.isLoading = true;
     if (!this.nuevaImagen.imagen || typeof this.nuevaImagen.imagen === 'string') {
       this.alertaServicio.MostrarError('No hay archivo para subir');
       return;
     }
-
-    this.cargandoImagen = true;
-
     const formData = new FormData();
     formData.append('Imagen', this.nuevaImagen.imagen);
     formData.append('CarpetaPrincipal', this.NombreEmpresa);
@@ -540,28 +540,22 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
     formData.append('CampoPropio', 'CodigoCarruselImagen');
     formData.append('NombreCampoImagen', 'UrlImagen');
 
-    const subscription = this.http.post(`${this.Url}subir-imagen`, formData)
+    this.carruselImagenServicio.SubirImagen(formData)
       .subscribe({
         next: (response: any) => {
-          if (response?.Alerta) {
-            this.alertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-            this.cargandoImagen = false;
-            this.cdr.detectChanges();
-            return;
+          if (response?.tipo === 'Éxito') {
+            this.alertaServicio.MostrarExito(response.message);
           }
-
-          this.alertaServicio.MostrarExito('Imagen subida correctamente');
           this.cargarDatosCarrusel();
-          this.cargandoImagen = false;
-
           const nuevaImagenCarrusel: CarruselItem = {
-            UrlImagen: response.Entidad?.UrlImagen || response.url,
-            CodigoCarruselImagen: response.Entidad?.CodigoCarruselImagen || 0,
+            UrlImagen: response.data.Entidad?.UrlImagen || response.url,
+            CodigoCarruselImagen: response.data.Entidad?.CodigoCarruselImagen || 0,
             CodigoCarrusel: this.items[0]?.CodigoCarrusel || this.codigoCarrusel
           };
 
           this.items = [...this.items, nuevaImagenCarrusel];
           this.resetNuevaImagen();
+          this.isLoading = false;
 
           setTimeout(() => {
             this.setupCarousel();
@@ -569,19 +563,21 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
           }, 100);
         },
         error: (error) => {
-          this.cargandoImagen = false;
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
 
-          if (error?.error?.Alerta) {
-            this.alertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
+          if (tipo === 'Alerta') {
+            this.alertaServicio.MostrarAlerta(mensaje);
           } else {
-            this.alertaServicio.MostrarError('Error al subir la imagen. Por favor, intente de nuevo.');
+            this.alertaServicio.MostrarError({ error: { message: mensaje } });
           }
-
-          this.cdr.detectChanges();
+          this.errorMessage = mensaje;
         }
       });
-
-    this.subscriptions.push(subscription);
   }
 
   // ---- MÉTODOS PARA EDICIÓN Y ELIMINACIÓN ----
@@ -642,6 +638,7 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Actualizar imagen en el servidor
   actualizarImagenCarrusel(): void {
+    this.isLoading = true;
     if (!this.imagenEdicion.imagen) {
       this.alertaServicio.MostrarAlerta('No hay archivo para actualizar');
       return;
@@ -659,17 +656,13 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
     formData.append('CampoPropio', 'CodigoCarruselImagen');
     formData.append('NombreCampoImagen', 'UrlImagen');
 
-    const subscription = this.http.post(`${this.Url}subir-imagen`, formData)
+
+    this.carruselImagenServicio.SubirImagen(formData)
       .subscribe({
         next: (response: any) => {
-          if (response?.Alerta) {
-            this.alertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-            this.cargandoImagen = false;
-            this.cdr.detectChanges();
-            return;
+          if (response?.tipo === 'Éxito') {
+            this.alertaServicio.MostrarExito(response.message);
           }
-
-          this.alertaServicio.MostrarExito('Imagen actualizada correctamente');
           this.cargarDatosCarrusel();
           this.cargandoImagen = false;
 
@@ -679,28 +672,33 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
             );
 
             if (index !== -1) {
-              this.items[index].UrlImagen = response.Entidad?.UrlImagen || response.url;
+              this.items[index].UrlImagen = response.data.Entidad?.UrlImagen || response.url;
               this.items = [...this.items];
             }
           }
-
+          this.isLoading = false;
           this.cancelarEdicion();
           this.cdr.detectChanges();
         },
         error: (error) => {
-          this.cargandoImagen = false;
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
 
-          if (error?.error?.Alerta) {
-            this.alertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
+          if (tipo === 'Alerta') {
+            this.alertaServicio.MostrarAlerta(mensaje);
           } else {
-            this.alertaServicio.MostrarError('Error al actualizar la imagen. Por favor, intente de nuevo.');
+            this.alertaServicio.MostrarError({ error: { message: mensaje } });
           }
+          this.errorMessage = mensaje;
 
           this.cdr.detectChanges();
         }
       });
 
-    this.subscriptions.push(subscription);
   }
 
   // Eliminar una imagen del carrusel
@@ -710,17 +708,19 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
       'Esta acción no se puede deshacer.'
     ).then((confirmado) => {
       if (confirmado) {
+        this.isLoading = true;
         const codigoCarruselImagen = item.CodigoCarruselImagen;
 
         const subscription = this.carruselImagenServicio.Eliminar(codigoCarruselImagen).subscribe({
           next: (response) => {
-            this.alertaServicio.MostrarExito('Imagen eliminada correctamente');
-
+            if (response?.tipo === 'Éxito') {
+              this.alertaServicio.MostrarExito(response.message);
+            }
             // Eliminar el ítem del array local
             this.items = this.items.filter((img: CarruselItem) =>
               img.CodigoCarruselImagen !== codigoCarruselImagen
             );
-
+            this.isLoading = false;
             // Actualizar el carrusel
             setTimeout(() => {
               this.setupCarousel();
@@ -728,7 +728,20 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
             }, 100);
           },
           error: (error) => {
-            this.alertaServicio.MostrarError(error, 'Error al eliminar la imagen');
+            this.isLoading = false;
+            const tipo = error?.error?.tipo;
+            const mensaje =
+              error?.error?.error?.message ||
+              error?.error?.message ||
+              'Ocurrió un error inesperado.';
+
+            if (tipo === 'Alerta') {
+              this.alertaServicio.MostrarAlerta(mensaje);
+            } else {
+              this.alertaServicio.MostrarError({ error: { message: mensaje } });
+            }
+
+            this.errorMessage = mensaje;
           }
         });
 
@@ -748,22 +761,42 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   guardarTitulo(): void {
+    this.isLoading = true;
     if (!this.carruselActual) {
       this.alertaServicio.MostrarError('No hay un carrusel cargado para editar');
       return;
     }
-
-    this.carruselActual.NombreCarrusel = this.tituloTemporal;
-
-    this.carruselServicio.Editar(this.carruselActual)
+console.log('carruselactual',this.carruselActual)
+    const datos = {
+      CodigoCarrusel: this.carruselActual.CodigoCarrusel, 
+      NombreCarrusel: this.tituloTemporal                 
+    };
+console.log('mira',datos)
+    this.carruselServicio.Editar(datos)
       .subscribe({
         next: (response) => {
           this.title = this.tituloTemporal;
           this.editandoTitulo = false;
-          this.alertaServicio.MostrarExito('Título actualizado correctamente');
+          if (response?.tipo === 'Éxito') {
+            this.alertaServicio.MostrarExito(response.message);
+          }
+          this.isLoading = false;
         },
         error: (error) => {
-          this.alertaServicio.MostrarError('Error al actualizar el título');
+          console.log('errorrrrrr', error)
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.alertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.alertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+          this.errorMessage = mensaje;
         }
       });
   }

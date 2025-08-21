@@ -13,10 +13,11 @@ import { PermisoServicio } from '../../../Autorizacion/AutorizacionPermiso';
 import { AlertaServicio } from '../../../Servicios/Alerta-Servicio';
 import { ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { EmpresaServicio } from '../../../Servicios/EmpresaServicio';
+import { SpinnerGlobalComponent } from '../../../Componentes/spinner-global/spinner-global.component';
 
 @Component({
   selector: 'app-nosotros',
-  imports: [CommonModule, NgIf, FormsModule, CarruselComponent],
+  imports: [CommonModule, NgIf, FormsModule, CarruselComponent, SpinnerGlobalComponent],
   templateUrl: './nosotros.component.html',
   styleUrls: ['./nosotros.component.css'],
   standalone: true,
@@ -30,6 +31,7 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
   sanitizedVideoUrl!: SafeResourceUrl;
   isVideoPlaying = false;
   videoId: string = '';
+  errorMessage: string = '';
 
   // Nuevas propiedades para manejo de edición
   portadaData: any = null;
@@ -204,10 +206,10 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
   // Modificar el método cargarDatosPortada para crear portada si no existe
   cargarDatosPortada(): void {
     this.empresaPortadaServicio.Listado().subscribe({
-      next: (data) => {
-        if (data && data.length > 0) {
+      next: (Respuesta) => {
+        if (Respuesta && Respuesta.data && Respuesta.data.length > 0) {
           // Existe la portada, usar datos existentes
-          this.portadaData = data[0];
+          this.portadaData = Respuesta.data[0];
           this.isLoading = false;
 
           // Actualizar la URL del video si viene de la API
@@ -265,7 +267,6 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
 
     this.empresaPortadaServicio.Crear(portadaDefecto).subscribe({
       next: (response) => {
-        console.log('Portada creada exitosamente:', response);
         this.alertaServicio.MostrarExito('Configuración de portada creada correctamente');
 
         // Asignar los datos de la portada creada
@@ -292,13 +293,10 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
   // Modificar el método cargarDatosCarrusel para crear carrusel si no existe
   cargarDatosCarrusel(): void {
     this.carruselServicio.Listado().subscribe({
-      next: (data) => {
+      next: (Respuesta: any) => {
+        const carruseles = Respuesta.data || [];
         // Buscar carrusel específicamente por ubicación 'Nosotros'
-        let carruselNosotros = null;
-
-        if (data && data.length > 0) {
-          carruselNosotros = data.find(c => c.Ubicacion === 'Nosotros');
-        }
+        const carruselNosotros = carruseles.find((c: any) => c.Ubicacion === 'Nosotros');
 
         if (carruselNosotros) {
           this.carruselData = carruselNosotros;
@@ -310,13 +308,16 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
         }
       },
       error: (err) => {
-        // this.crearCarruselPorDefecto();
+        this.alertaServicio.MostrarError('Error al obtener los datos del carrusel');
+        this.crearCarruselPorDefecto();
       }
     });
   }
 
+
   // Nuevo método para crear carrusel con valores por defecto
   private crearCarruselPorDefecto(): void {
+    this.isLoading = true;
     if (!this.codigoEmpresa) {
       this.alertaServicio.MostrarError('No se puede crear el carrusel sin información de empresa');
       this.error = true;
@@ -334,21 +335,32 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
 
     this.carruselServicio.Crear(carruselDefecto).subscribe({
       next: (response) => {
-        console.log('Carrusel creado exitosamente:', response);
-        this.alertaServicio.MostrarExito('Carrusel creado correctamente');
-
+        if (response?.tipo === 'Éxito') {
+          this.alertaServicio.MostrarExito(response.message);
+        }
         // Asignar los datos del carrusel creado
         this.carruselData = response.Entidad || response;
         this.codigoCarrusel = this.carruselData.CodigoCarrusel;
         this.titulo = this.carruselData.NombreCarrusel;
-
+        this.isLoading = false;
         this.cargarDatosCarrusel();
         // Cargar imágenes del carrusel (estará vacío inicialmente)
         this.cargarImagenesCarrusel();
       },
       error: (error) => {
-        console.error('Error al crear carrusel por defecto:', error);
-        this.alertaServicio.MostrarError('Error al crear el carrusel');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
 
         // Como fallback, usar datos temporales
         this.carruselData = carruselDefecto;
@@ -364,8 +376,8 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
       this.carruselImagenServicio
         .ListadoCarrusel(this.carruselData.CodigoCarrusel)
         .subscribe({
-          next: (data) => {
-            this.detallesCarrusel = data;
+          next: (Respuesta) => {
+            this.detallesCarrusel = Respuesta.data;
             this.datosListos = true;
           },
           error: (err) => {
@@ -400,6 +412,7 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
 
   // Método para guardar los cambios
   guardarCambios(): void {
+    this.isLoading = true;
     if (this.portadaData) {
       const datosActualizados = { ...this.portadaData };
 
@@ -412,14 +425,29 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
 
       this.empresaPortadaServicio.Editar(datosActualizados).subscribe({
         next: (response) => {
-          this.alertaServicio.MostrarExito('Cambios guardados correctamente');
+          if (response?.tipo === 'Éxito') {
+            this.alertaServicio.MostrarExito(response.message);
+          }
           this.modoEdicion = false;
           document.body.classList.remove('modoEdicion');
+          this.isLoading = false;
           this.datosOriginales = null;
         },
         error: (error) => {
-          console.error('Error al guardar los cambios:', error);
-          this.alertaServicio.MostrarError('Error al guardar los cambios. Por favor, intente de nuevo.');
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.alertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.alertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+
+          this.errorMessage = mensaje;
         },
       });
     } else {
@@ -499,21 +527,31 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
       this.alertaServicio.MostrarError('No hay datos de portada disponibles');
       return;
     }
-
+    this.isLoading = true;
     // Si no existe CodigoEmpresaPortada, primero crear la portada
     if (!this.portadaData.CodigoEmpresaPortada) {
-      this.alertaServicio.MostrarAlerta('Creando configuración de portada...', 'Por favor, espere');
-
       // Crear la portada primero y luego subir la imagen
       this.empresaPortadaServicio.Crear(this.portadaData).subscribe({
         next: (response) => {
-          this.portadaData = response.Entidad || response;
+          this.portadaData = response.data.Entidad || response;
           // Ahora que tenemos el CodigoEmpresaPortada, proceder a subir la imagen
           this.ejecutarSubidaImagen(file, campoDestino);
         },
         error: (error) => {
-          console.error('Error al crear portada antes de subir imagen:', error);
-          this.alertaServicio.MostrarError('Error al crear la configuración de la portada');
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.alertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.alertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+
+          this.errorMessage = mensaje;
         }
       });
     } else {
@@ -534,15 +572,10 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
     formData.append('CampoPropio', 'CodigoEmpresaPortada');
     formData.append('NombreCampoImagen', campoDestino);
 
-    this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
+    this.empresaPortadaServicio.SubirImagen(formData).subscribe({
       next: (response: any) => {
-        if (response?.Alerta) {
-          this.alertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-          return;
-        }
-
-        if (response && response.Entidad && response.Entidad[campoDestino]) {
-          this.portadaData[campoDestino] = response.Entidad[campoDestino];
+        if (response && response.data.Entidad && response.data.Entidad[campoDestino]) {
+          this.portadaData[campoDestino] = response.data.Entidad[campoDestino];
 
           const {
             UrlImagenPortada,
@@ -554,39 +587,54 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
           } = this.portadaData;
 
           this.empresaPortadaServicio.Editar(datosActualizados).subscribe({
-            next: () => {
-              this.alertaServicio.MostrarExito(
-                'Campo de imagen actualizado correctamente'
-              );
+            next: (Respuesta) => {
+              if (Respuesta?.tipo === 'Éxito') {
+                this.alertaServicio.MostrarExito(Respuesta.message);
+              }
               this.cargarDatosPortada();
               this.modoEdicion = false;
+              this.isLoading = false;
             },
             error: (error) => {
-              if (error?.error?.Alerta) {
-                this.alertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
+              this.isLoading = false;
+              const tipo = error?.error?.tipo;
+              const mensaje =
+                error?.error?.error?.message ||
+                error?.error?.message ||
+                'Ocurrió un error inesperado.';
+
+              if (tipo === 'Alerta') {
+                this.alertaServicio.MostrarAlerta(mensaje);
               } else {
-                this.alertaServicio.MostrarError(
-                  'Error al actualizar el campo de imagen. Por favor, intente de nuevo.'
-                );
+                this.alertaServicio.MostrarError({ error: { message: mensaje } });
               }
+              this.errorMessage = mensaje;
             },
           });
         }
       },
       error: (error) => {
-        if (error?.error?.Alerta) {
-          this.alertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
         } else {
-          this.alertaServicio.MostrarError(
-            'Error al subir la imagen. Por favor, intente de nuevo.'
-          );
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
         }
+
+        this.errorMessage = mensaje;
       },
     });
   }
 
   // Método para actualizar la URL del video
   actualizarVideo(): void {
+    this.isLoading = true;
     if (this.portadaData) {
       this.portadaData.Urlvideo = this.rawYoutubeUrl;
       this.setSanitizedUrl();
@@ -599,13 +647,28 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
       };
 
       this.empresaPortadaServicio.Editar(datosVideo).subscribe({
-        next: () => {
-          this.alertaServicio.MostrarExito('Video actualizado correctamente');
+        next: (Respuesta) => {
+          if (Respuesta?.tipo === 'Éxito') {
+            this.alertaServicio.MostrarExito(Respuesta.message);
+          }
+          this.isLoading = false;
           this.modoEdicion = false;
         },
         error: (error) => {
-          console.error('Error al actualizar video:', error);
-          this.alertaServicio.MostrarError('Error al actualizar el video. Por favor, intente de nuevo.');
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.alertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.alertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+
+          this.errorMessage = mensaje;
         },
       });
     }

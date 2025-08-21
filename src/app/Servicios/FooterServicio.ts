@@ -9,7 +9,7 @@ import { Entorno } from '../Entornos/Entorno';
 export class FooterServicio {
   private Url = `${Entorno.ApiUrl}footer`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   private obtenerHeaders(): HttpHeaders {
     const token = localStorage.getItem('token');
@@ -41,5 +41,8 @@ export class FooterServicio {
 
   CrearEditar(Datos: any): Observable<any> {
     return this.http.post(`${this.Url}/creareditar`, Datos, { headers: this.obtenerHeaders() });
+  }
+  SubirImagen(formData: FormData): Observable<any> {
+    return this.http.post(`${this.Url}/subir-imagen`, formData);
   }
 }

@@ -10,7 +10,7 @@ import { MenuPortada } from '../Modelos/MenuPortada';
 export class MenuPortadaServicio {
   private Url = `${Entorno.ApiUrl}menuportada`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   private obtenerHeaders(): HttpHeaders {
     const token = localStorage.getItem('token');
@@ -42,5 +42,9 @@ export class MenuPortadaServicio {
 
   CrearEditar(Datos: MenuPortada): Observable<any> {
     return this.http.post(`${this.Url}/creareditar`, Datos, { headers: this.obtenerHeaders() });
+  }
+  
+  SubirImagen(formData: FormData): Observable<any> {
+    return this.http.post(`${this.Url}/subir-imagen`, formData);
   }
 }
