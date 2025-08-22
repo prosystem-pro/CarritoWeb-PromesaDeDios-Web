@@ -8,6 +8,8 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatNativeDateModule } from '@angular/material/core';
+import { AlertaServicio } from '../../../Servicios/Alerta-Servicio';
+import { SpinnerGlobalComponent } from '../../../Componentes/spinner-global/spinner-global.component';
 
 
 @Component({
@@ -17,12 +19,15 @@ import { MatNativeDateModule } from '@angular/material/core';
     MatFormFieldModule,
     MatInputModule,
     MatNativeDateModule,
+    SpinnerGlobalComponent
   ],
   templateUrl: './reporte-vista.component.html',
   styleUrl: './reporte-vista.component.css'
 })
 export class ReporteVistaComponent {
   @ViewChild('selectorFecha') selectorFecha!: ElementRef<HTMLInputElement>;
+  errorMessage: string = '';
+  isLoading: boolean = false;
   TotalSolicitudMes: number = 0;
   TopProductos: any[] = [];
   ConseguirAnio = new Date().getFullYear();
@@ -63,7 +68,7 @@ export class ReporteVistaComponent {
     datasets: [{ data: [], backgroundColor: [] }]
   };
 
-  constructor(private Servicio: ReporteVistaServicio) {
+  constructor(private Servicio: ReporteVistaServicio, private AlertaServicio: AlertaServicio) {
     this.ObtenerDatos();
   }
 
@@ -73,17 +78,16 @@ export class ReporteVistaComponent {
 
     this.Servicio.ObtenerResumen(Anio, Mes).subscribe({
       next: (res) => {
-        this.TotalSolicitudMes=0;
-        console.log('RESPUESTA DEL BACKEND',res)
+        this.TotalSolicitudMes = 0;
         // Guardamos total solicitudes por mes
-        if (res.SolicitudTotalMes && typeof res.SolicitudTotalMes === 'number') {
-          this.TotalSolicitudMes = res.SolicitudTotalMes;
+        if (res.data.SolicitudTotalMes && typeof res.data.SolicitudTotalMes === 'number') {
+          this.TotalSolicitudMes = res.data.SolicitudTotalMes;
         }
 
         // Línea - ResumenPorDiaMes
-        if (res.SolicitudesDiaMes && Array.isArray(res.SolicitudesDiaMes)) {
-          const labelsLine = res.SolicitudesDiaMes.map((item: any) => item.dia);
-          const dataLine = res.SolicitudesDiaMes.map((item: any) => item.total); // << CORREGIDO
+        if (res.data.SolicitudesDiaMes && Array.isArray(res.data.SolicitudesDiaMes)) {
+          const labelsLine = res.data.SolicitudesDiaMes.map((item: any) => item.dia);
+          const dataLine = res.data.SolicitudesDiaMes.map((item: any) => item.total); // << CORREGIDO
 
           const colorHue = Math.floor(Math.random() * 360);
           const borderColorLine = `hsl(${colorHue}, 70%, 50%)`;
@@ -107,9 +111,9 @@ export class ReporteVistaComponent {
 
 
         // PolarArea - SolicitudesDiaMes con selección de día
-        if (res.SolicitudesDiaMes && Array.isArray(res.SolicitudesDiaMes)) {
-          const totalMes = res.SolicitudesDiaMes.reduce((sum: number, item: { total: number }) => sum + item.total, 0);
-          const diaObj = res.SolicitudesDiaMes.find((item: { dia: string }) => item.dia === this.DiaSeleccionado);
+        if (res.data.SolicitudesDiaMes && Array.isArray(res.data.SolicitudesDiaMes)) {
+          const totalMes = res.data.SolicitudesDiaMes.reduce((sum: number, item: { total: number }) => sum + item.total, 0);
+          const diaObj = res.data.SolicitudesDiaMes.find((item: { dia: string }) => item.dia === this.DiaSeleccionado);
           const totalDia = diaObj ? diaObj.total : 0;
           const totalResto = totalMes - totalDia;
 
@@ -131,9 +135,9 @@ export class ReporteVistaComponent {
 
 
         // Barra - SolicitudesAño
-        if (res.SolicitudesPorMes && res.SolicitudesPorMes && Array.isArray(res.SolicitudesPorMes)) {
-          const labelsBar = res.SolicitudesPorMes.map((item: any) => item.nombre);
-          const dataBar = res.SolicitudesPorMes.map((item: any) => item.total);
+        if (res.data.SolicitudesPorMes && res.data.SolicitudesPorMes && Array.isArray(res.data.SolicitudesPorMes)) {
+          const labelsBar = res.data.SolicitudesPorMes.map((item: any) => item.nombre);
+          const dataBar = res.data.SolicitudesPorMes.map((item: any) => item.total);
           const backgroundColorBar = this.GenerarColoresAleatorios(labelsBar.length);
 
           this.ConfiguracionGraficoBarra = {
@@ -146,7 +150,20 @@ export class ReporteVistaComponent {
         }
       },
       error: (error) => {
-        console.error('Error al obtener resumen:', error);
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
       }
     });
   }

@@ -766,12 +766,10 @@ export class CarruselComponent implements OnInit, AfterViewInit, OnDestroy {
       this.alertaServicio.MostrarError('No hay un carrusel cargado para editar');
       return;
     }
-console.log('carruselactual',this.carruselActual)
     const datos = {
       CodigoCarrusel: this.carruselActual.CodigoCarrusel, 
       NombreCarrusel: this.tituloTemporal                 
     };
-console.log('mira',datos)
     this.carruselServicio.Editar(datos)
       .subscribe({
         next: (response) => {
@@ -783,7 +781,6 @@ console.log('mira',datos)
           this.isLoading = false;
         },
         error: (error) => {
-          console.log('errorrrrrr', error)
           this.isLoading = false;
           const tipo = error?.error?.tipo;
           const mensaje =

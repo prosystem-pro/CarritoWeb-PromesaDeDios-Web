@@ -7,10 +7,13 @@ import { Entorno } from '../../../Entornos/Entorno';
 import { AlertaServicio } from '../../../Servicios/Alerta-Servicio';
 import { EmpresaServicio } from '../../../Servicios/EmpresaServicio';
 import { HttpClient } from '@angular/common/http';
+import { PermisoServicio } from '../../../Autorizacion/AutorizacionPermiso';
+import { SpinnerGlobalComponent } from '../../../Componentes/spinner-global/spinner-global.component';
+
 
 @Component({
   selector: 'app-pago',
-  imports: [FormsModule, CommonModule, ReactiveFormsModule],
+  imports: [FormsModule, CommonModule, ReactiveFormsModule, SpinnerGlobalComponent],
   templateUrl: './pago.component.html',
   styleUrl: './pago.component.css'
 })
@@ -22,14 +25,17 @@ export class PagoComponent implements OnInit {
   Cargando: boolean = false;
   MostrarModal: boolean = false;
   ComprobanteSeleccionado: string | null = null;
+  errorMessage: string = '';
+  isLoading: boolean = false;
 
 
   constructor(
     private Servicio: PagoServicio,
     private AlertaServicio: AlertaServicio,
     private EmpresaServicio: EmpresaServicio,
-    private http: HttpClient
-  ) {}
+    private http: HttpClient,
+    public Permiso: PermisoServicio,
+  ) { }
 
   ngOnInit(): void {
     this.Listado();
@@ -38,10 +44,23 @@ export class PagoComponent implements OnInit {
   Listado() {
     this.Servicio.Listado(this.AnioSeleccionado).subscribe({
       next: (res) => {
-        this.Pagos = res;
+        this.Pagos = res.data;
       },
-      error: (err) => {
-        console.error('Error al cargar pagos:', err);
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
       },
     });
   }
@@ -63,75 +82,98 @@ export class PagoComponent implements OnInit {
     }
   }
 
-SubirImagen(file: File, codigoPago: number): void {
-  const NombreEmpresa = this.NombreEmpresa ?? 'defaultCompanyName';
-  this.Cargando = true; // Activar bloqueo
+  SubirImagen(file: File, codigoPago: number): void {
+    const NombreEmpresa = this.NombreEmpresa ?? 'defaultCompanyName';
+    this.isLoading = true;
 
-  this.EmpresaServicio.ConseguirPrimeraEmpresa().subscribe({
-    next: (empresa) => {
-      if (!empresa) {
-        this.Cargando = false;
-        this.AlertaServicio.MostrarAlerta('No se encontró ninguna empresa.');
-        return;
-      }
+    this.EmpresaServicio.ConseguirPrimeraEmpresa().subscribe({
+      next: (empresa) => {
+        if (!empresa) {
+          this.isLoading = false;
+          this.AlertaServicio.MostrarAlerta('No se encontró ninguna empresa.');
+          return;
+        }
 
-      const formData = new FormData();
-      formData.append('Imagen', file);
-      formData.append('CarpetaPrincipal', NombreEmpresa);
-      formData.append('SubCarpeta', 'Pago');
-      formData.append('CodigoVinculado', empresa.CodigoEmpresa.toString());
-      formData.append('CodigoPropio', codigoPago.toString());
-      formData.append('CampoVinculado', 'CodigoEmpresa');
-      formData.append('CampoPropio', 'CodigoPago');
-      formData.append('NombreCampoImagen', 'UrlComprobante');
+        const formData = new FormData();
+        formData.append('Imagen', file);
+        formData.append('CarpetaPrincipal', NombreEmpresa);
+        formData.append('SubCarpeta', 'Pago');
+        formData.append('CodigoVinculado', empresa.CodigoEmpresa.toString());
+        formData.append('CodigoPropio', codigoPago.toString());
+        formData.append('CampoVinculado', 'CodigoEmpresa');
+        formData.append('CampoPropio', 'CodigoPago');
+        formData.append('NombreCampoImagen', 'UrlComprobante');
 
-      this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
-        next: (response: any) => {
-          if (response?.Alerta) {
-            this.Cargando = false;
-            this.AlertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-            return;
-          }
+        this.Servicio.SubirImagen(formData).subscribe({
+          next: (response: any) => {
+ 
+            const CodigoPago = response?.data.CodigoPago ?? codigoPago;
+            const Datos = { CodigoPago: CodigoPago, Estatus: 2 };
+       
+            this.Servicio.Editar(Datos).subscribe({
+              next: (Respuesta) => {
+      
+                if (Respuesta?.tipo === 'Éxito') {
+                  this.AlertaServicio.MostrarExito(Respuesta.message);
+                }
+                this.isLoading = false;
+                this.Listado();
+              },
+              error: (error) => {
+                this.isLoading = false;
+                const tipo = error?.error?.tipo;
+                const mensaje =
+                  error?.error?.error?.message ||
+                  error?.error?.message ||
+                  'Ocurrió un error inesperado.';
 
-          const CodigoPago = response?.CodigoPago ?? codigoPago;
-          const Datos = { CodigoPago: CodigoPago, Estatus: 2 };
+                if (tipo === 'Alerta') {
+                  this.AlertaServicio.MostrarAlerta(mensaje);
+                } else {
+                  this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+                }
+                this.errorMessage = mensaje;
+              }
+            });
+          },
+          error: (error) => {
+            this.isLoading = false;
+            const tipo = error?.error?.tipo;
+            const mensaje =
+              error?.error?.error?.message ||
+              error?.error?.message ||
+              'Ocurrió un error inesperado.';
 
-          this.Servicio.Editar(Datos).subscribe({
-            next: () => {
-              this.Cargando = false;
-              this.AlertaServicio.MostrarExito('Comprobante guardado con éxito');
-              this.Listado();
-            },
-            error: (err) => {
-              this.Cargando = false;
-              this.AlertaServicio.MostrarError(err, 'Error al actualizar estado del pago');
+            if (tipo === 'Alerta') {
+              this.AlertaServicio.MostrarAlerta(mensaje);
+            } else {
+              this.AlertaServicio.MostrarError({ error: { message: mensaje } });
             }
-          });
-        },
-        error: (err) => {
-          this.Cargando = false;
-          if (err?.error?.Alerta) {
-            this.AlertaServicio.MostrarAlerta(err.error.Alerta, 'Atención');
-          } else {
-            this.AlertaServicio.MostrarError(err, 'Error al subir la imagen');
-          }
-        },
-      });
-    },
-    error: (err) => {
-      this.Cargando = false;
-      if (err?.error?.Alerta) {
-        this.AlertaServicio.MostrarAlerta(err.error.Alerta, 'Atención');
-      } else {
-        this.AlertaServicio.MostrarError(err, 'No se pudo obtener la empresa');
-      }
-    },
-  });
-}
+            this.errorMessage = mensaje;
+          },
+        });
+      },
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
 
-VerComprobante(url: string) {
-  this.ComprobanteSeleccionado = url;
-  this.MostrarModal = true;
-}
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
+      },
+    });
+  }
+
+  VerComprobante(url: string) {
+    this.ComprobanteSeleccionado = url;
+    this.MostrarModal = true;
+  }
 
 }

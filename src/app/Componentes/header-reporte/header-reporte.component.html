@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-center flex-wrap flex-md-nowrap overflow-auto px-2 gap-1">
 
   <!-- Botón: Productos -->
-  <button type="button"
+  <button *ngIf="Permiso.TienePermiso('ReporteProducto', 'Resumen')" type="button" 
     class="btn fw-bold shadow flex-shrink-0"
     (click)="router.navigate(['/reporte-producto'])"
     [style.background-color]="router.url === '/reporte-producto' ? '#b25d00' : '#fca311'"
@@ -20,7 +20,7 @@
   </button>
 
   <!-- Botón: Visitas -->
-  <button type="button"
+  <button *ngIf="Permiso.TienePermiso('ReporteVista', 'Resumen')" type="button"
     class="btn fw-bold shadow flex-shrink-0"
     (click)="router.navigate(['/reporte-vista'])"
     [style.background-color]="router.url === '/reporte-vista' ? '#b25d00' : '#fca311'"
@@ -31,7 +31,7 @@
   </button>
 
   <!-- Botón: Redes Sociales -->
-  <button type="button"
+  <button *ngIf="Permiso.TienePermiso('ReporteRedSocial', 'Resumen')" type="button"
     class="btn fw-bold shadow flex-shrink-0"
     (click)="router.navigate(['/reporte-red-social'])"
     [style.background-color]="router.url === '/reporte-red-social' ? '#b25d00' : '#fca311'"
@@ -42,7 +42,7 @@
   </button>
 
   <!-- Botón: Tiempo en página -->
-  <button type="button"
+  <button *ngIf="Permiso.TienePermiso('ReporteTiempoPagina', 'Resumen')" type="button"
     class="btn fw-bold shadow flex-shrink-0"
     (click)="router.navigate(['/reporte-tiempo-pagina'])"
     [style.background-color]="router.url === '/reporte-tiempo-pagina' ? '#b25d00' : '#fca311'"

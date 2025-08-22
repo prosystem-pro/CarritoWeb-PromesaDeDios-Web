@@ -9,7 +9,7 @@
   
   <!-- Subir imagen fondo de página -->
   <div class="container position-relative" style="position: relative; top: 20px;"
-    *ngIf="Permiso.PermisoSuperAdmin()">
+    *ngIf="Permiso.TienePermiso('ContactanosPortada', 'SubirImagen')">
     <label class="rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; cursor: pointer;
          background-color: #ffffff;
          box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
@@ -27,7 +27,7 @@
     <div class="position-absolute top-0 end-0 d-flex gap-2 me-5 mt-3 z-3">
 
       <!-- Botón de lápiz -->
-      <label *ngIf="Permiso.PermisoSuperAdmin() && !MostrarTitulo" (click)="MostrarTitulo = true"
+      <label *ngIf="Permiso.TienePermiso('ContactanosPortada', 'Editar') && Permiso.TienePermiso('ContactanosPortada', 'Crear') && !MostrarTitulo" (click)="MostrarTitulo = true"
         class="btn btn-sm rounded-circle d-flex align-items-center justify-content-center shadow"
         style="width: 45px; height: 45px; cursor: pointer; background-color: #fff; position: relative;">
         <i class="bi bi-pencil-square text-black"></i>
@@ -147,7 +147,7 @@
        }">
 
       <!-- Switch real -->
-      <div *ngIf="Permiso.PermisoSuperAdmin()" class="position-absolute top-0 start-0 ms-4 mt-2" style="z-index: 3;">
+      <div *ngIf="Permiso.TienePermiso('RedSocial', 'Editar')" class="position-absolute top-0 start-0 ms-4 mt-2" style="z-index: 3;">
         <div class="form-check form-switch">
           <input class="form-check-input toggle-red-social" type="checkbox" role="switch" [checked]="red.Estatus === 1"
             (change)="DesactivarRedSocial(i, $event)" style="transform: scale(1.2); cursor: pointer;"
@@ -170,7 +170,7 @@
         </ng-template>
 
         <!-- Botón cámara -->
-        <label *ngIf="Permiso.PermisoSuperAdmin()"
+        <label *ngIf="Permiso.TienePermiso('RedSocialImagen', 'SubirImagen')"
           class="position-absolute bottom-0 end-0 bg-white rounded-circle d-flex align-items-center justify-content-center"
           style="width: 18px; height: 18px; cursor: pointer; box-shadow: 0px 2px 5px rgba(0,0,0,0.3);">
           <i class="bi bi-camera-fill text-black fs-6"></i>
@@ -204,22 +204,21 @@
       </div>
 
       <!-- BOTONES -->
-      <div class="d-flex flex-column align-items-center justify-content-center gap-1 ms-2"
-        *ngIf="Permiso.PermisoSuperAdmin()">
-        <label *ngIf="!MostrarListado[i]"
+      <div class="d-flex flex-column align-items-center justify-content-center gap-1 ms-2">
+        <label *ngIf="!MostrarListado[i] && Permiso.TienePermiso('RedSocial', 'Editar')"
           class="bg-white rounded-circle d-flex align-items-center justify-content-center"
           style="width: 30px; height: 30px; cursor: pointer; box-shadow: 0px 2px 5px rgba(0,0,0,0.3);"
           (click)="MostrarListado[i] = true">
           <i class="bi bi-pencil-fill text-black fs-6"></i>
         </label>
 
-        <button *ngIf="!MostrarListado[i]" class="btn btn-sm"
+        <button *ngIf="!MostrarListado[i] && Permiso.TienePermiso('RedSocial', 'Eliminar')" class="btn btn-sm"
           style="width: 30px; height: 30px; padding: 0; background-color: #dc3545; color: white; border: none;"
           (click)="EliminarRedSocial(i)" [disabled]="red.Estatus !== 1">
           <i class="bi bi-x-lg fs-6"></i>
         </button>
 
-        <button *ngIf="MostrarListado[i]" class="btn btn-success btn-sm"
+        <button *ngIf="MostrarListado[i] && Permiso.TienePermiso('RedSocial', 'Editar')" class="btn btn-success btn-sm"
           (click)="EditarRedSocial(i); MostrarListado[i] = false" [disabled]="red.Estatus !== 1">
           <i class="bi bi-check-lg"></i>
         </button>
@@ -240,7 +239,7 @@
 
 
   <!-- Crear nueva Rede Social -->
-  <div class="container" *ngIf="Permiso.PermisoSuperAdmin()">
+  <div class="container" *ngIf="Permiso.TienePermiso('RedSocial', 'Crear')">
     <div class="d-flex justify-content-center position-relative">
       <div
         class="d-flex align-items-center justify-content-center gap-3 py-4 position-relative ContornoFondoRedesSocialesNuevo"
@@ -273,7 +272,7 @@
           </label>
 
           <!-- Ícono de cámara si no hay imagen -->
-          <label *ngIf="!ImagenTemporal" class="d-flex align-items-center justify-content-center bg-white"
+          <label *ngIf="!ImagenTemporal && Permiso.TienePermiso('RedSocialImagen', 'SubirImagen')" class="d-flex align-items-center justify-content-center bg-white"
             style="width: 125px; height: 35px; border: 2px solid black; border-radius: 50%; cursor: pointer; box-shadow: 0px 4px 10px rgba(0,0,0,0.3);">
             <i class="bi bi-image fs-5 text-dark"></i>
             <input type="file" accept="image/*" hidden (change)="ActualizarImagenRedSocialTemporal($event, null)">
@@ -315,7 +314,7 @@
 
 
 
-  <label *ngIf="Permiso.PermisoSuperAdmin()"
+  <label *ngIf="Permiso.TienePermiso('ContactanosPortada', 'SubirImagen')"
     class="rounded-circle d-flex align-items-center justify-content-center"
     style="
       width: 45px;
@@ -337,7 +336,7 @@
 <div class="w-100 position-relative ">
   <!-- Botón de edición (pencil) -->
   <div *ngIf="!MostrarMapa" class="position-absolute top-0 end-0 me-3 mt-0 z-3">
-    <button *ngIf="Permiso.PermisoSuperAdmin()" class="btn p-1 d-flex align-items-center justify-content-center"
+    <button *ngIf="Permiso.TienePermiso('ContactanosPortada', 'Editar')" class="btn p-1 d-flex align-items-center justify-content-center"
       style="background-color: white; border: 1px solid #ccc; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.2); width: 45px; height: 45px;"
       (click)="MostrarMapa = true; ContactanosPortada.UrlMapa = ''">
       <i class="bi bi-pencil-square text-black fs-6"></i>
@@ -407,3 +406,5 @@
 
   </div>
 </div>
+
+<app-spinner-global [visible]="isLoading"></app-spinner-global>

@@ -7,14 +7,14 @@ import { Entorno } from '../Entornos/Entorno';
   providedIn: 'root'
 })
 export class ContactanosPortadaServicio {
-  private Url = `${Entorno.ApiUrl}contactanosportada`; 
+  private Url = `${Entorno.ApiUrl}contactanosportada`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   Listado(): Observable<any> {
     return this.http.get(`${this.Url}/listado`);
   }
-  
+
   Crear(Datos: any): Observable<any> {
     return this.http.post(`${this.Url}/crear`, Datos);
   }
@@ -29,5 +29,9 @@ export class ContactanosPortadaServicio {
 
   Eliminar(Codigo: number): Observable<any> {
     return this.http.delete(`${this.Url}/eliminar/${Codigo}`);
+  }
+
+  SubirImagen(formData: FormData): Observable<any> {
+    return this.http.post(`${this.Url}/subir-imagen`, formData);
   }
 }

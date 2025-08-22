@@ -2,20 +2,20 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Entorno } from '../Entornos/Entorno';
-import { map } from 'rxjs/operators'; 
+import { map } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
 })
 export class OtroServicio {
-  private Url = `${Entorno.ApiUrl}otro`; 
+  private Url = `${Entorno.ApiUrl}otro`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   Listado(): Observable<any> {
     return this.http.get(`${this.Url}/listado`);
   }
-  
+
   Crear(Datos: any): Observable<any> {
     return this.http.post(`${this.Url}/crear`, Datos);
   }
@@ -33,7 +33,10 @@ export class OtroServicio {
   }
   ConseguirPrimeraEmpresa(): Observable<any | null> {
     return this.Listado().pipe(
-      map(empresas => (empresas && empresas.length > 0 ? empresas[0] : null))
+      map(empresas => (empresas && empresas.data.length > 0 ? empresas[0] : null))
     );
+  }
+  SubirImagen(formData: FormData): Observable<any> {
+    return this.http.post(`${this.Url}/subir-imagen`, formData);
   }
 }

@@ -55,7 +55,7 @@
                     {{ nombreClasificacion | uppercase }}
                 </div>
 
-                <div *ngIf="!modoEdicion && !Permiso.EsSoloAdmin()" class="cart-icon" (click)="alternarCarrito()">
+                <div class="cart-icon" (click)="alternarCarrito()">
                     <span class="cart-count">{{totalItemsCarrito || 0}}</span>
                     <img [src]="DatosHeader.urlImagenCarrito" alt="Carrito" height="30">
                 </div>
@@ -136,14 +136,14 @@
                 <!-- Productos existentes -->
                 <section *ngFor="let producto of productos">
                     <div class="product-card" [ngClass]="{'producto-desactivado': producto.Estatus === 2}"
-                        *ngIf="producto.Estatus === 1 || Permiso.PermisoAdminSuperAdmin()">
+                        *ngIf="producto.Estatus === 1 || Permiso.TienePermiso('Producto', 'VerUnidad')">
                         <!-- Opciones de edición (visibles solo en modo edición) -->
-                        <div *ngIf="modoEdicion" class="edit-product-controls">
-                            <button *ngIf="Permiso.PermisoSuperAdmin()" class="delete-product-btn"
+                        <div  class="edit-product-controls">
+                            <button *ngIf="Permiso.TienePermiso('Producto', 'Eliminar')" class="delete-product-btn"
                                 title="Eliminar producto" (click)="eliminarProducto(producto)">
                                 <i class="bi bi-trash"></i>
                             </button>
-                            <button *ngIf="Permiso.PermisoAdminSuperAdmin()" class="toggle-product-btn"
+                            <button *ngIf="Permiso.TienePermiso('Producto', 'Editar')" class="toggle-product-btn"
                                 title="Activar/Desactivar producto" (click)="toggleEstadoProducto(producto)">
                                 <i [ngClass]="producto.Estatus === 1 ? 'bi bi-toggle-on' : 'bi bi-toggle-off'"></i>
                             </button>
@@ -282,3 +282,4 @@
             (click)="alternarCarrito()">IR AL CARRITO</button>
     </div>
 </div>
+<app-spinner-global [visible]="isLoading"></app-spinner-global>

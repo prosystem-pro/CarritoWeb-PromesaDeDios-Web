@@ -440,7 +440,6 @@ export class FooterComponent implements OnInit {
           }
         },
         error: (error) => {
-          console.log('Error Imagen', error)
           this.isLoading = false;
           const tipo = error?.error?.tipo;
           const mensaje =
@@ -492,9 +491,7 @@ export class FooterComponent implements OnInit {
 
     this.redSocialImagenServicio.Crear(datosNuevos).subscribe({
       next: (response) => {
-        console.log('Respuesta de crear', response)
         if (response?.tipo === 'Éxito') {
-          console.log('Exito de  crear', response.tipo)
           this.alertaServicio.MostrarExito(response.message);
         }
         // Recargar las redes sociales para obtener los datos actualizados

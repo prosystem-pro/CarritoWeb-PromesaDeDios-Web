@@ -14,11 +14,12 @@ import { OtroServicio } from '../../../Servicios/OtroServicio';
 import { PermisoServicio } from '../../../Autorizacion/AutorizacionPermiso';
 import { Entorno } from '../../../Entornos/Entorno';
 import { AlertaServicio } from '../../../Servicios/Alerta-Servicio';
+import { SpinnerGlobalComponent } from '../../../Componentes/spinner-global/spinner-global.component';
 
 
 @Component({
   selector: 'app-otro',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpinnerGlobalComponent],
   templateUrl: './otro.component.html',
   styleUrl: './otro.component.css'
 })
@@ -33,7 +34,8 @@ export class OtroComponent {
   UrlImagenTemporal: string | ArrayBuffer | null = null;
   UrlImagenTemporal2: string | ArrayBuffer | null = null;
   CodigoTemporal: string | ArrayBuffer | null = null;
-
+  errorMessage: string = '';
+  isLoading: boolean = false;
 
   constructor(
     public PortadaOtroServicio: PortadaOtroServicio,
@@ -51,10 +53,11 @@ export class OtroComponent {
   }
   //CODIGO DE PORTADA OTRO
   ObtenerPortadaOtro(): void {
+    this.isLoading = true;
     this.PortadaOtroServicio.Listado().subscribe({
-      next: (data: PortadaOtro[]) => {
-        if (data && data.length > 0) {
-          this.PortadaOtro = data[0];
+      next: (data) => {
+        if (data && data.data.length > 0) {
+          this.PortadaOtro = data.data[0];
         } else {
           this.PortadaOtro = {
             NombrePortadaOtro: 'Coloca un título',
@@ -66,6 +69,7 @@ export class OtroComponent {
           };
           this.AlertaServicio.MostrarAlerta('No se encontraron registros. Se utilizarán valores predeterminados.');
         }
+        this.isLoading = false;
       },
       error: (error) => {
         this.PortadaOtro = {
@@ -76,28 +80,56 @@ export class OtroComponent {
           ColorDescripcion: '#000000',
           ColorDescripcionOtro: '#ffffff',
         };
-        this.AlertaServicio.MostrarError(error, 'No se pudo obtener la información');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
       }
     });
   }
 
 
   GuardarPortadaOtro(): void {
+    this.isLoading = true;
     if (!this.PortadaOtro?.CodigoPortadaOtro) {
       this.EmpresaServicio.Listado().subscribe({
-        next: (empresas: any[]) => {
-          if (empresas && empresas.length > 0) {
-            const CodigoEmpresa = empresas[0].CodigoEmpresa;
+        next: (empresas) => {
+          if (empresas && empresas.data.length > 0) {
+            const CodigoEmpresa = empresas.data[0].CodigoEmpresa;
             this.PortadaOtro!.CodigoEmpresa = CodigoEmpresa;
 
             this.PortadaOtroServicio.Crear(this.PortadaOtro).subscribe({
-              next: () => {
-                this.AlertaServicio.MostrarExito('El registro se creó correctamente.');
+              next: (Respuesta) => {
+                if (Respuesta?.tipo === 'Éxito') {
+                  this.AlertaServicio.MostrarExito(Respuesta.message);
+                }
                 this.ObtenerPortadaOtro();
                 this.MostrarPortadaOtro = false;
               },
               error: (error) => {
-                this.AlertaServicio.MostrarError(error, 'No se pudo crear el registro.');
+                this.isLoading = false;
+                const tipo = error?.error?.tipo;
+                const mensaje =
+                  error?.error?.error?.message ||
+                  error?.error?.message ||
+                  'Ocurrió un error inesperado.';
+
+                if (tipo === 'Alerta') {
+                  this.AlertaServicio.MostrarAlerta(mensaje);
+                } else {
+                  this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+                }
+
+                this.errorMessage = mensaje;
               }
             });
 
@@ -106,20 +138,48 @@ export class OtroComponent {
           }
         },
         error: (error) => {
-          this.AlertaServicio.MostrarError(error, 'No se pudo obtener la información necesaria.');
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.AlertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+
+          this.errorMessage = mensaje;
         }
       });
       return;
     }
 
     this.PortadaOtroServicio.Editar(this.PortadaOtro).subscribe({
-      next: () => {
-        this.AlertaServicio.MostrarExito('El registro se actualizó correctamente.');
+      next: (Respuesta) => {
+        if (Respuesta?.tipo === 'Éxito') {
+          this.AlertaServicio.MostrarExito(Respuesta.message);
+        }
         this.MostrarPortadaOtro = false;
         this.ObtenerPortadaOtro();
       },
       error: (error) => {
-        this.AlertaServicio.MostrarError(error, 'No se pudo actualizar el registro.');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
       }
     });
   }
@@ -140,11 +200,12 @@ export class OtroComponent {
   }
 
   ObtenerOtro(): void {
+    this.isLoading = true;
     this.OtroServicio.Listado().subscribe({
-      next: (data: Otro[]) => {
-        if (data && data.length > 0) {
-          console.log('estos son los datos obtenidos de otro', data)
-          this.Otro = data.map(item => ({
+      next: (data) => {
+        this.isLoading = false;
+        if (data && data.data.length > 0) {
+          this.Otro = data.data.map((item: any) => ({
             ...item,
             MostrarOtro: false
           }));
@@ -154,10 +215,23 @@ export class OtroComponent {
           this.MostrarListado = [];
         }
       },
-      error: () => {
+      error: (error) => {
         this.Otro = [];
         this.MostrarListado = [];
-        this.AlertaServicio.MostrarAlerta('No se pudieron obtener los datos.');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
       }
     });
   }
@@ -167,6 +241,7 @@ export class OtroComponent {
   }
 
   GuardarOtro(index: number | null): void {
+    this.isLoading = true;
     let item: any;
 
     if (index !== null) {
@@ -192,26 +267,56 @@ export class OtroComponent {
 
     if (index !== null || (this.CodigoTemporal && this.CodigoTemporal !== '')) {
       this.OtroServicio.Editar(item).subscribe({
-        next: () => {
+        next: (Respuesta) => {
           this.MostrarAgregarOtro = false;
           this.ObtenerOtro();
-          this.AlertaServicio.MostrarExito('Los datos se actualizaron correctamente.');
+          if (Respuesta?.tipo === 'Éxito') {
+            this.AlertaServicio.MostrarExito(Respuesta.message);
+          }
+          this.isLoading = false;
         },
-        error: () => {
-          this.AlertaServicio.MostrarError('No se pudieron guardar los datos.');
+        error: (error) => {
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.AlertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+          this.errorMessage = mensaje;
         }
       });
     } else {
       this.OtroServicio.Crear(item).subscribe({
-        next: () => {
+        next: (Respuesta) => {
           this.UrlImagenTemporal = '';
           this.CodigoTemporal = '';
           this.MostrarAgregarOtro = false;
+          this.isLoading = false;
           this.ObtenerOtro();
-          this.AlertaServicio.MostrarExito('El registro se creó correctamente.');
+          if (Respuesta?.tipo === 'Éxito') {
+            this.AlertaServicio.MostrarExito(Respuesta.message);
+          }
         },
-        error: () => {
-          this.AlertaServicio.MostrarError('No se pudieron guardar los datos.');
+        error: (error) => {
+              this.isLoading = false;
+              const tipo = error?.error?.tipo;
+              const mensaje =
+                error?.error?.error?.message ||
+                error?.error?.message ||
+                'Ocurrió un error inesperado.';
+
+              if (tipo === 'Alerta') {
+                this.AlertaServicio.MostrarAlerta(mensaje);
+              } else {
+                this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+              }
+              this.errorMessage = mensaje;
         }
       });
     }
@@ -243,20 +348,16 @@ export class OtroComponent {
   }
 
   subirImagen(file: File, CampoDestino: string, index: number | null, permiso: string | null): void {
-  if (!permiso) {
-    this.UrlImagenTemporal = '';
-    this.UrlImagenTemporal2 = '';
-    this.CodigoTemporal = '';
-  }
+    this.isLoading = true;
+    if (!permiso) {
+      this.UrlImagenTemporal = '';
+      this.UrlImagenTemporal2 = '';
+      this.CodigoTemporal = '';
+    }
     const nombreEmpresa = this.NombreEmpresa ?? 'defaultCompanyName';
 
     this.EmpresaServicio.ConseguirPrimeraEmpresa().subscribe({
       next: (empresa) => {
-        if (!empresa) {
-          this.AlertaServicio.MostrarAlerta('No se encontró el dato solicitado.');
-          return;
-        }
-
         const formData = new FormData();
         const CodigoOtro = index != null ? String(this.Otro[index]?.CodigoOtro ?? '') : '';
         const CodigoPropio = String(this.CodigoTemporal || CodigoOtro || '');
@@ -269,41 +370,54 @@ export class OtroComponent {
         formData.append('CampoVinculado', 'CodigoEmpresa');
         formData.append('CampoPropio', 'CodigoOtro');
         formData.append('NombreCampoImagen', CampoDestino);
-        this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
+
+        this.OtroServicio.SubirImagen(formData).subscribe({
           next: (res: any) => {
-            if (res?.Alerta) {
-              this.AlertaServicio.MostrarAlerta(res.Alerta, 'Atención');
-              return;
+            if (res?.tipo === 'Éxito') {
+              this.AlertaServicio.MostrarExito(res.message);
             }
-            this.AlertaServicio.MostrarAlerta('El registro se actualizó correctamente.');
 
-          if (permiso) {
-            this.UrlImagenTemporal = res?.Entidad?.UrlImagen || this.UrlImagenTemporal;
-            this.UrlImagenTemporal2 = res?.Entidad?.UrlImagen2 || this.UrlImagenTemporal2;
-            this.CodigoTemporal = res?.Entidad?.CodigoOtro || this.CodigoTemporal;
-          }
-
+            if (permiso) {
+              this.UrlImagenTemporal = res?.data.Entidad?.UrlImagen || this.UrlImagenTemporal;
+              this.UrlImagenTemporal2 = res?.data.Entidad?.UrlImagen2 || this.UrlImagenTemporal2;
+              this.CodigoTemporal = res?.data.Entidad?.CodigoOtro || this.CodigoTemporal;
+            }
+            this.isLoading = false;
             if (!permiso) {
               this.ObtenerOtro();
             }
           },
-          error: (err) => {
-            console.error('Error al subir la imagen:', err);
-            if (err?.error?.Alerta) {
-              this.AlertaServicio.MostrarAlerta(err.error.Alerta, 'Atención');
+          error: (error) => {
+            this.isLoading = false;
+            const tipo = error?.error?.tipo;
+            const mensaje =
+              error?.error?.error?.message ||
+              error?.error?.message ||
+              'Ocurrió un error inesperado.';
+
+            if (tipo === 'Alerta') {
+              this.AlertaServicio.MostrarAlerta(mensaje);
             } else {
-              this.AlertaServicio.MostrarAlerta('Hubo un error al procesar la solicitud. Intente de nuevo.');
+              this.AlertaServicio.MostrarError({ error: { message: mensaje } });
             }
+            this.errorMessage = mensaje;
           }
         });
       },
-      error: (err) => {
-        console.error('Error al obtener empresa:', err);
-        if (err?.error?.Alerta) {
-          this.AlertaServicio.MostrarAlerta(err.error.Alerta, 'Atención');
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
         } else {
-          this.AlertaServicio.MostrarAlerta('No se pudo obtener el dato solicitado. Intente nuevamente.');
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
         }
+        this.errorMessage = mensaje;
       }
     });
   }

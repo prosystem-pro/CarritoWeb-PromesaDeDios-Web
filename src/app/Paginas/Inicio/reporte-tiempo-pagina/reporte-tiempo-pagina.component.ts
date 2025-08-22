@@ -7,7 +7,8 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatNativeDateModule } from '@angular/material/core';
-
+import { SpinnerGlobalComponent } from '../../../Componentes/spinner-global/spinner-global.component';
+import { AlertaServicio } from '../../../Servicios/Alerta-Servicio';
 
 @Component({
   selector: 'app-reporte-tiempo-pagina',
@@ -16,6 +17,7 @@ import { MatNativeDateModule } from '@angular/material/core';
     MatFormFieldModule,
     MatInputModule,
     MatNativeDateModule,
+    SpinnerGlobalComponent
   ],
   templateUrl: './reporte-tiempo-pagina.component.html',
   styleUrl: './reporte-tiempo-pagina.component.css'
@@ -30,7 +32,8 @@ export class ReporteTiempoPaginaComponent implements OnInit, OnDestroy {
   };
   segmentos = 12;
   espacioEntreSegmentos = 3;
-
+  errorMessage: string = '';
+  isLoading: boolean = false;
 
   IntervaloActualizacion: any;
 
@@ -119,7 +122,7 @@ export class ReporteTiempoPaginaComponent implements OnInit, OnDestroy {
     datasets: [{ data: [], backgroundColor: [] }]
   };
 
-  constructor(private Servicio: ReporteTiempoPaginaServicio) {
+  constructor(private Servicio: ReporteTiempoPaginaServicio, private AlertaServicio: AlertaServicio) {
     this.ObtenerDatos();
   }
 
@@ -129,13 +132,26 @@ export class ReporteTiempoPaginaComponent implements OnInit, OnDestroy {
 
     this.Servicio.ObtenerResumen(Anio, Mes).subscribe({
       next: (res) => {
-        if (res.TotalTiempo) {
-          this.TotalTiempo = res.TotalTiempo;
+        if (res.data.TotalTiempo) {
+          this.TotalTiempo = res.data.TotalTiempo;
         }
 
       },
       error: (error) => {
-        console.error('Error al obtener resumen:', error);
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
       }
     });
   }

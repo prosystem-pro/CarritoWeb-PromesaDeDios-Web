@@ -6,7 +6,7 @@
             <img [src]="red.Imagenes[0]?.UrlImagen || ''" [alt]="red.NombreRedSocial"
                 (click)="ReportarRedSocial(red.CodigoRedSocial)" />
             <!-- Botón cámara -->
-            <label *ngIf="Permiso.PermisoSuperAdmin()"
+            <label *ngIf="Permiso.TienePermiso('RedSocialImagen', 'SubirImagen')"
                 class="position-absolute bottom-0 end-0 bg-white rounded-circle d-flex align-items-center justify-content-center"
                 style="width: 18px; height: 18px; cursor: pointer; box-shadow: 0px 2px 5px rgba(0,0,0,0.3);">
                 <i class="bi bi-camera-fill text-black fs-6"></i>
@@ -16,3 +16,5 @@
         </a>
     </div>
 </div>
+
+<app-spinner-global [visible]="isLoading"></app-spinner-global>

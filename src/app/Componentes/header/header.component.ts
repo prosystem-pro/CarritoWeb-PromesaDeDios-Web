@@ -190,8 +190,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
   cargarData(): void {
     this.menuPortadaServicio.Listado().subscribe({
       next: (data) => {
-        if (data && data.length > 0) {
-          this.Data = data[0];
+        if (data && data.data.length > 0) {
+          this.Data = data.data[0];
           this.colorNavbarEIcono = this.Data?.ColorFondoNombreClasificacion || '';
           this.colorTextoNavbar = this.Data?.ColorNombreClasificacion || '';
         }
@@ -437,7 +437,6 @@ export class HeaderComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response: any) => {
           if (response && response.data.Entidad && response.data.Entidad.UrlImagen) {
-            console.log('PROCESAR IMAGEN 1')
             this.procesarRespuestaImagen(codigoRedSocial, response, redSocial);
           } else {
             const imageUrl = response.data.UrlImagenPortada ||
@@ -445,7 +444,6 @@ export class HeaderComponent implements OnInit, OnDestroy {
               (response.data.Entidad ? response.data.Entidad.UrlImagenPortada : null);
 
             if (imageUrl) {
-              console.log('pROCESAR IMAGEN 2')
               this.procesarRespuestaImagen(codigoRedSocial, { Entidad: { UrlImagen: imageUrl } }, redSocial);
             } else {
               this.isLoading = false;
@@ -523,7 +521,6 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   actualizarRegistroRedSocialImagen(codigoRedSocialImagen: number, urlImagen: string): void {
-    console.log('AQUI TOY')
     const datosActualizados = {
       CodigoRedSocialImagen: codigoRedSocialImagen,
       Ubicacion: 'Navbar',

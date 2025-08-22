@@ -120,7 +120,7 @@
                     </div>
                 </li>
 
-                <li *ngIf="Permiso.TienePermiso('ReporteProducto', 'Listado')" class="nav-item">
+                <li *ngIf="Permiso.TienePermiso('ReporteProducto', 'Resumen')" class="nav-item">
                     <!-- Versión normal -->
                     <a *ngIf="!modoEdicion" class="nav-link" (click)="navegar('/reporte-producto')"
                         [ngClass]="!esMovil && estaRutaActiva('/reporte-producto') ? 'active-route' : ''"

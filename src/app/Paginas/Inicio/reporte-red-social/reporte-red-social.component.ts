@@ -8,6 +8,8 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatNativeDateModule } from '@angular/material/core';
+import { AlertaServicio } from '../../../Servicios/Alerta-Servicio';
+import { SpinnerGlobalComponent } from '../../../Componentes/spinner-global/spinner-global.component';
 
 
 @Component({
@@ -16,12 +18,14 @@ import { MatNativeDateModule } from '@angular/material/core';
     MatDatepickerModule,
     MatFormFieldModule,
     MatInputModule,
-    MatNativeDateModule,],
+    MatNativeDateModule,
+    SpinnerGlobalComponent],
   templateUrl: './reporte-red-social.component.html',
   styleUrl: './reporte-red-social.component.css'
 })
 export class ReporteRedSocialComponent {
-
+  errorMessage: string = '';
+  isLoading: boolean = false;
   TopRedesSociales: any[] = [];
   TotalSolicitudMes: number = 0;
   TopProductos: any[] = [];
@@ -60,7 +64,7 @@ export class ReporteRedSocialComponent {
     datasets: [{ data: [], backgroundColor: [] }]
   };
 
-  constructor(private Servicio: ReporteRedSocialServicio) {
+  constructor(private Servicio: ReporteRedSocialServicio, private AlertaServicio: AlertaServicio) {
     this.ObtenerDatos();
   }
 
@@ -71,16 +75,16 @@ export class ReporteRedSocialComponent {
 
     this.Servicio.ObtenerResumen(Anio, Mes).subscribe({
       next: (res) => {
-          this.TotalSolicitudMes=0;
+        this.TotalSolicitudMes = 0;
         // Guardamos total solicitudes por mes
-        if (res.SolicitudTotalMes && typeof res.SolicitudTotalMes === 'number') {
-          this.TotalSolicitudMes = res.SolicitudTotalMes;
+        if (res.data.SolicitudTotalMes && typeof res.data.SolicitudTotalMes === 'number') {
+          this.TotalSolicitudMes = res.data.SolicitudTotalMes;
         }
 
         // Línea - ResumenPorDiaMes
-        if (res.SolicitudesDiaMes && Array.isArray(res.SolicitudesDiaMes)) {
-          const labelsLine = res.SolicitudesDiaMes.map((item: any) => item.dia);
-          const dataLine = res.SolicitudesDiaMes.map((item: any) => item.total); // << CORREGIDO
+        if (res.data.SolicitudesDiaMes && Array.isArray(res.data.SolicitudesDiaMes)) {
+          const labelsLine = res.data.SolicitudesDiaMes.map((item: any) => item.dia);
+          const dataLine = res.data.SolicitudesDiaMes.map((item: any) => item.total); // << CORREGIDO
 
           const colorHue = Math.floor(Math.random() * 360);
           const borderColorLine = `hsl(${colorHue}, 70%, 50%)`;
@@ -101,17 +105,17 @@ export class ReporteRedSocialComponent {
           };
         }
         // Tarjetas - Top Redes Sociales
-        if (res.TopRedesSociales && Array.isArray(res.TopRedesSociales)) {
-          this.TopRedesSociales = res.TopRedesSociales.map((item: any) => ({
+        if (res.data.TopRedesSociales && Array.isArray(res.data.TopRedesSociales)) {
+          this.TopRedesSociales = res.data.TopRedesSociales.map((item: any) => ({
             Nombre: item.nombre,
             Total: item.total,
             UrlImagen: item.urlImagen
           }));
         }
         // Radar - ResumenRedesSociales
-        if (res.ResumenRedesSociales && Array.isArray(res.ResumenRedesSociales)) {
-          const labels = res.ResumenRedesSociales.map((item: any) => item.nombre);
-          const data = res.ResumenRedesSociales.map((item: any) => item.total);
+        if (res.data.ResumenRedesSociales && Array.isArray(res.data.ResumenRedesSociales)) {
+          const labels = res.data.ResumenRedesSociales.map((item: any) => item.nombre);
+          const data = res.data.ResumenRedesSociales.map((item: any) => item.total);
           const backgroundColor = this.GenerarColoresAleatorios(labels.length);
 
           this.ConfiguracionGraficoRadar = {
@@ -123,9 +127,9 @@ export class ReporteRedSocialComponent {
           };
         }
         // Barra - SolicitudesAño
-        if (res.SolicitudesPorMes && res.SolicitudesPorMes && Array.isArray(res.SolicitudesPorMes)) {
-          const labelsBar = res.SolicitudesPorMes.map((item: any) => item.nombre);
-          const dataBar = res.SolicitudesPorMes.map((item: any) => item.total);
+        if (res.data.SolicitudesPorMes && res.data.SolicitudesPorMes && Array.isArray(res.data.SolicitudesPorMes)) {
+          const labelsBar = res.data.SolicitudesPorMes.map((item: any) => item.nombre);
+          const dataBar = res.data.SolicitudesPorMes.map((item: any) => item.total);
           const backgroundColorBar = this.GenerarColoresAleatorios(labelsBar.length);
 
           this.ConfiguracionGraficoBarra = {
@@ -138,7 +142,20 @@ export class ReporteRedSocialComponent {
         }
       },
       error: (error) => {
-        console.error('Error al obtener resumen:', error);
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
       }
     });
   }

@@ -5,7 +5,7 @@
 
     <!-- Botones de edición -->
     <div style="position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.25rem;">
-      <button *ngIf="!MostrarPortadaOtro && Permiso.PermisoSuperAdmin()" (click)="MostrarPortadaOtro = true"
+      <button *ngIf="!MostrarPortadaOtro && Permiso.TienePermiso('PortadaOtro', 'Crear') && Permiso.TienePermiso('PortadaOtro', 'Editar')" (click)="MostrarPortadaOtro = true"
         class="btn btn-sm shadow-sm" title="Editar"
         style="background-color: #f8f9fa; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
         <i class="bi bi-pencil-square fs-6"></i>
@@ -102,7 +102,7 @@
         style="width: 100%; height: 100%; object-fit: cover; display: block;">
 
       <!-- Botón de actualizar imagen 1 -->
-      <label *ngIf="Permiso.PermisoSuperAdmin()"
+      <label *ngIf="Permiso.TienePermiso('Otro', 'SubirImagen')"
         class="position-absolute d-flex align-items-center justify-content-center EditarEliminar" style="top: 10px; right: 10px; background-color: rgba(255, 255, 255, 0.9); border-radius: 50%; cursor: pointer;
              box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);">
         <i class="bi bi-camera text-dark fs-5"
@@ -118,14 +118,14 @@
         style="width: 100%; height: 100%; object-fit: cover; display: block;">
 
       <!-- Botón de eliminar (general) -->
-      <button *ngIf="!MostrarListado[i] && Permiso.PermisoSuperAdmin()"
+      <button *ngIf="!MostrarListado[i] && Permiso.TienePermiso('Otro', 'Eliminar')"
         class="btn btn-sm d-flex align-items-center justify-content-center EditarEliminar" style="position: absolute; bottom: 10px; right: 10px; background-color: #dc3545; color: white; border: none; border-radius: 50%;
              box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);" (click)="EliminarOtro(i)">
         <i class="bi bi-trash fs-6"></i>
       </button>
 
       <!-- Botón de actualizar imagen 2 -->
-      <label *ngIf="Permiso.PermisoSuperAdmin()"
+      <label *ngIf="Permiso.TienePermiso('Otro', 'SubirImagen')"
         class="position-absolute d-flex align-items-center justify-content-center EditarEliminar" style="top: 10px; right: 10px; background-color: rgba(255, 255, 255, 0.9); border-radius: 50%; cursor: pointer;
              box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);">
         <i class="bi bi-camera text-dark fs-5"
@@ -172,7 +172,7 @@
     </button>
   </div>
   <!-- Botón de edición (cuando no está en modo edición) -->
-  <div *ngIf="!MostrarListado[i] && Permiso.PermisoSuperAdmin()" class="mt-2 d-flex justify-content-end">
+  <div *ngIf="!MostrarListado[i] && Permiso.TienePermiso('Otro', 'Editar')" class="mt-2 d-flex justify-content-end">
     <button (click)="MostrarListado[i] = true" class="btn btn-sm shadow-sm " title="Editar"
       style="background-color: #f8f9fa; border-radius: 50%; width: 45px; height: 45px; padding: 0; display: flex; align-items: center; justify-content: center;">
       <i class="bi bi-pencil-square"></i>
@@ -191,7 +191,7 @@
 
 <!-- SECCION PARA AGREGAR UN NUEVO -->
 <!-- Botón de agregar centrado y circular -->
-<div *ngIf="!MostrarAgregarOtro && Permiso.PermisoSuperAdmin()" class="d-flex justify-content-center my-4">
+<div *ngIf="!MostrarAgregarOtro && Permiso.TienePermiso('Otro', 'Crear')" class="d-flex justify-content-center my-4">
   <button class="btn btn-light rounded-circle shadow" style="width: 60px; height: 60px;"
     (click)="MostrarAgregarOtro = true; UrlImagenTemporal = ''; UrlImagenTemporal2=''; CodigoTemporal=''">
     <i class="bi bi-plus-lg fs-4"></i>
@@ -208,7 +208,7 @@
         style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
     </div>
     <!-- Si no existe una URL de imagen temporal, mostrar el ícono de la cámara -->
-    <label *ngIf="!UrlImagenTemporal && Permiso.PermisoSuperAdmin()"
+    <label *ngIf="!UrlImagenTemporal && Permiso.TienePermiso('Otro', 'SubirImagen')"
       class="d-flex align-items-center justify-content-center"
       style="position: absolute; z-index: 1; width: 50px; height: 50px; background-color: rgba(255, 255, 255, 0.9); border-radius: 50%; cursor: pointer; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);">
       <i class="bi bi-camera text-dark fs-5"></i>
@@ -225,7 +225,7 @@
         style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
     </div>
     <!-- Si no existe una URL de imagen temporal, mostrar el ícono de la cámara -->
-    <label *ngIf="!UrlImagenTemporal2 && Permiso.PermisoSuperAdmin()"
+    <label *ngIf="!UrlImagenTemporal2 && Permiso.TienePermiso('Otro', 'SubirImagen')"
       class="d-flex align-items-center justify-content-center"
       style="position: absolute; z-index: 1; width: 50px; height: 50px; background-color: rgba(255, 255, 255, 0.9); border-radius: 50%; cursor: pointer; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);">
       <i class="bi bi-camera text-dark fs-5"></i>
@@ -271,6 +271,4 @@
   </div>
 </div>
 <!-- *******************************-->
-<div *ngIf="!PortadaOtro">
-  <p>Cargando datos...</p>
-</div>
+<app-spinner-global [visible]="isLoading"></app-spinner-global>

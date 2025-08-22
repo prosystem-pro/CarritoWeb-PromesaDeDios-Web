@@ -14,6 +14,7 @@ import { ClasificacionProductoServicio } from '../../Servicios/ClasificacionProd
 import { AlertaServicio } from '../../Servicios/Alerta-Servicio';
 import { PermisoServicio } from '../../Autorizacion/AutorizacionPermiso';
 import { MenuPortadaServicio } from '../../Servicios/MenuPortadaServicio';
+import { SpinnerGlobalComponent } from '../spinner-global/spinner-global.component';
 
 interface ProductoConCantidad extends Producto {
   cantidad?: number;
@@ -28,7 +29,7 @@ interface PrecioTemp {
 
 @Component({
   selector: 'app-productos',
-  imports: [CommonModule, FormsModule, SvgDecoradorComponent, CarritoComponent],
+  imports: [CommonModule, FormsModule, SvgDecoradorComponent, CarritoComponent, SpinnerGlobalComponent],
   templateUrl: './productos.component.html',
   styleUrl: './productos.component.css',
 })
@@ -46,6 +47,7 @@ export class ProductosComponent implements OnInit, OnDestroy {
   totalItemsCarrito: number = 0;
   mostrarCarrito = false;
   isLoading: boolean = false;
+  errorMessage: string = '';
 
   ordenAscendente: boolean = true;
   colorFooter: string = '';
@@ -280,8 +282,8 @@ export class ProductosComponent implements OnInit, OnDestroy {
   cargarData(): void {
     this.menuPortadaServicio.Listado().subscribe({
       next: (data) => {
-        if (data && data.length > 0) {
-          this.Data = data[0];
+        if (data && data.data.length > 0) {
+          this.Data = data.data[0];
           this.colorNavbarEIcono = this.Data?.ColorFondoNombreClasificacion || '';
           this.colorTextoNavbar = this.Data?.ColorNombreClasificacion || '';
         }
@@ -497,7 +499,6 @@ export class ProductosComponent implements OnInit, OnDestroy {
     // Llamar al servicio para actualizar en la base de datos
     this.productoServicio.Editar(producto).subscribe({
       next: (response) => {
-        console.log('Precio actualizado correctamente', response);
         this.cargarProductos(this.codigoClasificacion);
         this.alertaServicio.MostrarExito('Precio del producto actualizado correctamente');
         this.editandoPrecio = null;
@@ -559,7 +560,6 @@ export class ProductosComponent implements OnInit, OnDestroy {
 
     this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
       next: (response: any) => {
-        console.log('📦 Respuesta completa del backend al subir imagen:', response);
         if (response?.Alerta) {
           this.alertaServicio.MostrarAlerta(response.Alerta, 'Atención');
           return;
@@ -676,9 +676,8 @@ export class ProductosComponent implements OnInit, OnDestroy {
   }
 
   subirImagenNuevoProducto(): void {
-    if (!this.nuevaImagenFile) return;
-
     this.isLoading = true;
+    if (!this.nuevaImagenFile) return;
     const formData = new FormData();
     formData.append('Imagen', this.nuevaImagenFile);
     formData.append('CarpetaPrincipal', this.NombreEmpresa);
@@ -689,16 +688,11 @@ export class ProductosComponent implements OnInit, OnDestroy {
     formData.append('CampoPropio', 'CodigoProducto');
     formData.append('NombreCampoImagen', 'UrlImagen');
 
-    this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
+    this.productoServicio.SubirImagen(formData).subscribe({
       next: (response: any) => {
-        if (response?.Alerta) {
-          this.isLoading = false;
-          this.alertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-          return;
-        }
 
-        if (response && response.Entidad && response.Entidad.CodigoProducto) {
-          const codigoProductoGenerado = response.Entidad.CodigoProducto;
+        if (response && response.data.Entidad && response.data.Entidad.CodigoProducto) {
+          const codigoProductoGenerado = response.data.Entidad.CodigoProducto;
 
           const productoActualizado: Producto = {
             CodigoProducto: codigoProductoGenerado,
@@ -710,15 +704,28 @@ export class ProductosComponent implements OnInit, OnDestroy {
           };
 
           this.productoServicio.Editar(productoActualizado).subscribe({
-            next: () => {
+            next: (Respuesta) => {
               this.isLoading = false;
-              this.alertaServicio.MostrarExito('Producto creado correctamente');
+              if (Respuesta?.tipo === 'Éxito') {
+                this.alertaServicio.MostrarExito(Respuesta.message);
+              }
               this.cargarProductos(this.codigoClasificacion);
               this.cancelarNuevoProducto();
             },
-            error: (editError) => {
+            error: (error) => {
               this.isLoading = false;
-              this.alertaServicio.MostrarError(editError, 'Error al actualizar datos del producto');
+              const tipo = error?.error?.tipo;
+              const mensaje =
+                error?.error?.error?.message ||
+                error?.error?.message ||
+                'Ocurrió un error inesperado.';
+
+              if (tipo === 'Alerta') {
+                this.alertaServicio.MostrarAlerta(mensaje);
+              } else {
+                this.alertaServicio.MostrarError({ error: { message: mensaje } });
+              }
+              this.errorMessage = mensaje;
               this.cargarProductos(this.codigoClasificacion);
               this.cancelarNuevoProducto();
             },
@@ -730,11 +737,18 @@ export class ProductosComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         this.isLoading = false;
-        if (error?.error?.Alerta) {
-          this.alertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
         } else {
-          this.alertaServicio.MostrarError(error, 'Error al subir imagen y crear producto');
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
         }
+        this.errorMessage = mensaje;
       },
     });
   }
@@ -763,17 +777,32 @@ export class ProductosComponent implements OnInit, OnDestroy {
       'Esta acción no se puede deshacer.'
     ).then((confirmado) => {
       if (confirmado) {
+        this.isLoading = true;
         this.productoServicio.Eliminar(producto.CodigoProducto!).subscribe({
           next: (response) => {
-            this.alertaServicio.MostrarExito('Producto eliminado correctamente');
-
+            this.isLoading = false;
+            if (response?.tipo === 'Éxito') {
+              this.alertaServicio.MostrarExito(response.message);
+            }
             // Eliminar de la lista local
             this.productos = this.productos.filter(
               (p) => p.CodigoProducto !== producto.CodigoProducto
             );
           },
           error: (error) => {
-            this.alertaServicio.MostrarError(error, 'Error al eliminar el producto');
+            this.isLoading = false;
+            const tipo = error?.error?.tipo;
+            const mensaje =
+              error?.error?.error?.message ||
+              error?.error?.message ||
+              'Ocurrió un error inesperado.';
+
+            if (tipo === 'Alerta') {
+              this.alertaServicio.MostrarAlerta(mensaje);
+            } else {
+              this.alertaServicio.MostrarError({ error: { message: mensaje } });
+            }
+            this.errorMessage = mensaje;
           },
         });
       }
@@ -846,6 +875,7 @@ export class ProductosComponent implements OnInit, OnDestroy {
   }
 
   toggleEstadoProducto(producto: Producto): void {
+    this.isLoading = true;
     const nuevoEstado = producto.Estatus === 1 ? 2 : 1;
 
     const productoActualizado: Producto = {
@@ -856,14 +886,26 @@ export class ProductosComponent implements OnInit, OnDestroy {
     delete productoActualizado.UrlImagen;
 
     this.productoServicio.Editar(productoActualizado).subscribe({
-      next: () => {
-        producto.Estatus = nuevoEstado; // Actualiza el estado local
-        this.alertaServicio.MostrarExito(
-          `Producto ${nuevoEstado === 1 ? 'activado' : 'desactivado'} correctamente`
-        );
+      next: (Respuesta) => {
+        if (Respuesta?.tipo === 'Éxito') {
+          this.alertaServicio.MostrarExito(Respuesta.message);
+        }
+        this.isLoading = false;
       },
-      error: (err) => {
-        this.alertaServicio.MostrarError(err, 'Error al cambiar el estado del producto');
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
       }
     });
   }

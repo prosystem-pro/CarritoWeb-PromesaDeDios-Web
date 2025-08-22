@@ -412,7 +412,6 @@ export class MenuCategoriaComponent implements OnInit {
   cancelarEdicionTituloPrincipal() {
     this.tituloPrincipal = this.tituloPrincipalOriginal;
     this.editandoTituloPrincipal = false;
-    console.log('Edición del título principal cancelada');
   }
 
   iniciarEdicionTitulo(clasificacion: any) {
@@ -441,7 +440,6 @@ export class MenuCategoriaComponent implements OnInit {
       elements[0].textContent = this.tituloOriginal;
     }
     this.editandoTitulo = null;
-    console.log('Edición cancelada');
   }
 
   cambiarImagen(evento: any, clasificacion: any) {
@@ -736,7 +734,6 @@ export class MenuCategoriaComponent implements OnInit {
     this.clasificacionProductoServicio.Editar(clasificacion).subscribe({
       next: (response) => {
         this.cargarClasificaciones();
-        console.log('Clasificación actualizada');
       },
       error: (error) => {
         console.error('Error al actualizar clasificación:', error);
@@ -845,7 +842,6 @@ export class MenuCategoriaComponent implements OnInit {
             this.isLoading = false;
           },
           error: (error) => {
-            console.log('ERRORDDDD', error)
             this.isLoading = false;
             const tipo = error?.error?.tipo;
             const mensaje =

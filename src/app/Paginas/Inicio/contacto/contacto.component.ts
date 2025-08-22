@@ -16,10 +16,11 @@ import { RedSocialImagenServicio } from '../../../Servicios/RedSocialImagenServi
 import { EmpresaServicio } from '../../../Servicios/EmpresaServicio';
 import { ContactanosPortadaServicio } from '../../../Servicios/ContactanosPortadaServicio';
 import { AlertaServicio } from '../../../Servicios/Alerta-Servicio';
+import { SpinnerGlobalComponent } from '../../../Componentes/spinner-global/spinner-global.component';
 
 @Component({
   selector: 'app-contacto',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SpinnerGlobalComponent],
   templateUrl: './contacto.component.html',
   styleUrls: ['./contacto.component.css']
 })
@@ -31,7 +32,8 @@ export class ContactoComponent implements OnInit {
   ContactanosPortada!: ContactanosPortada;
   MapaSeguro!: SafeResourceUrl;
   RedSocial: any[] = [];
-
+  errorMessage: string = '';
+  isLoading: boolean = false;
 
 
   RedeSocialImagen: RedSocialImagen[] = [];
@@ -78,9 +80,8 @@ export class ContactoComponent implements OnInit {
   ObtenerContactanosPortada(): void {
     this.ServicioContactanosPortada.Listado().subscribe({
       next: (data) => {
-        console.log('PRUEBA',data)
-        if (data && data.length > 0) {
-          this.ContactanosPortada = data[0];
+        if (data && data.data.length > 0) {
+          this.ContactanosPortada = data.data[0];
           this.ContactanosPortada.NombreContactanosPortada = this.ContactanosPortada.NombreContactanosPortada || 'Nombre por defecto';
           this.ContactanosPortada.ColorFondoNombreContactanosPortada = this.ContactanosPortada.ColorFondoNombreContactanosPortada || '#f0f0f0';
           this.ContactanosPortada.ColorContornoNombreContactanosPortada = this.ContactanosPortada.ColorContornoNombreContactanosPortada || '#cccccc';
@@ -98,7 +99,6 @@ export class ContactoComponent implements OnInit {
           this.ContactanosPortada.ColorBotonComoLlegar = this.ContactanosPortada.ColorBotonComoLlegar || '#007bff';
           this.ContactanosPortada.UrlMapaComoLlegar = this.ContactanosPortada.UrlMapaComoLlegar || 'https://maps.google.com';
           this.ContactanosPortada.UrlImagenHorario = this.ContactanosPortada.UrlImagenHorario || 'http://neni2048.com.ar/alumnos/horarios/';
-
         } else {
           this.ContactanosPortada = {
             NombreContactanosPortada: 'Nombre por defecto',
@@ -116,12 +116,26 @@ export class ContactoComponent implements OnInit {
         }
       },
       error: (error) => {
-        this.AlertaServicio.MostrarError(error, 'No se pudo cargar la sección');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+
+        this.errorMessage = mensaje;
       }
     });
   }
 
   GuardarContactanosPortada(): void {
+    this.isLoading = true;
     const textoMapa = this.ContactanosPortada.UrlMapa || '';
 
     if (textoMapa) {
@@ -156,24 +170,54 @@ export class ContactoComponent implements OnInit {
     const esEdicion = this.ContactanosPortada.CodigoContactanosPortada;
     if (esEdicion) {
       this.ServicioContactanosPortada.Editar(this.ContactanosPortada).subscribe({
-        next: () => {
+        next: (Respuesta) => {
           this.MostrarTitulo = false;
-          this.AlertaServicio.MostrarExito('Los datos se editaron correctamente.');
+          if (Respuesta?.tipo === 'Éxito') {
+            this.AlertaServicio.MostrarExito(Respuesta.message);
+          }
+          this.isLoading = false;
           this.ObtenerContactanosPortada();
         },
         error: (error) => {
-          this.AlertaServicio.MostrarError(error, 'Error al editar los datos');
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.AlertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+          this.errorMessage = mensaje;
         }
       });
     } else {
       this.ServicioContactanosPortada.Crear(this.ContactanosPortada).subscribe({
-        next: () => {
+        next: (Respuesta) => {
           this.MostrarTitulo = false;
-          this.AlertaServicio.MostrarExito('El registro se guardó correctamente.');
+          if (Respuesta?.tipo === 'Éxito') {
+            this.AlertaServicio.MostrarExito(Respuesta.message);
+          }
+          this.isLoading = false;
           this.ObtenerContactanosPortada();
         },
         error: (error) => {
-          this.AlertaServicio.MostrarError(error, 'Error al guardar los datos');
+          this.isLoading = false;
+          const tipo = error?.error?.tipo;
+          const mensaje =
+            error?.error?.error?.message ||
+            error?.error?.message ||
+            'Ocurrió un error inesperado.';
+
+          if (tipo === 'Alerta') {
+            this.AlertaServicio.MostrarAlerta(mensaje);
+          } else {
+            this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+          }
+          this.errorMessage = mensaje;
         }
       });
     }
@@ -197,8 +241,8 @@ export class ContactoComponent implements OnInit {
   }
 
   subirImagen(file: File, CampoDestino: string): void {
+    this.isLoading = true;
     const nombreEmpresa = this.NombreEmpresa ?? 'defaultCompanyName';
-
     this.EmpresaServicio.ConseguirPrimeraEmpresa().subscribe({
       next: (empresa) => {
         if (!empresa) {
@@ -218,22 +262,28 @@ export class ContactoComponent implements OnInit {
         formData.append('CampoPropio', 'CodigoContactanosPortada');
         formData.append('NombreCampoImagen', CampoDestino);
 
-        this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
-          next: (response: any) => {
-            if (response?.Alerta) {
-              this.AlertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-              return;
+        this.ServicioContactanosPortada.SubirImagen(formData).subscribe({
+          next: (Respuesta: any) => {
+            if (Respuesta?.tipo === 'Éxito') {
+              this.AlertaServicio.MostrarExito(Respuesta.message);
             }
-
-            this.AlertaServicio.MostrarExito('Imagen subida correctamente.');
+            this.isLoading = false;
             this.ObtenerContactanosPortada();
           },
-          error: (err) => {
-            if (err?.error?.Alerta) {
-              this.AlertaServicio.MostrarAlerta(err.error.Alerta, 'Atención');
+          error: (error) => {
+            this.isLoading = false;
+            const tipo = error?.error?.tipo;
+            const mensaje =
+              error?.error?.error?.message ||
+              error?.error?.message ||
+              'Ocurrió un error inesperado.';
+
+            if (tipo === 'Alerta') {
+              this.AlertaServicio.MostrarAlerta(mensaje);
             } else {
-              this.AlertaServicio.MostrarError(err, 'Error al subir la imagen');
+              this.AlertaServicio.MostrarError({ error: { message: mensaje } });
             }
+            this.errorMessage = mensaje;
           }
         });
       },
@@ -250,11 +300,23 @@ export class ContactoComponent implements OnInit {
   //Código relacionado a Redes Sociales
   ObtenerRedesSociales(): void {
     this.RedSocialServicio.Listado('Contacto').subscribe({
-      next: (data: RedSocial[]) => {
-        this.RedSocial = data;
+      next: (Respuesta: any) => {
+        this.RedSocial = Respuesta.data;
       },
       error: (error) => {
-        this.AlertaServicio.MostrarError(error, 'Error al obtener los datos');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
       }
     });
   }
@@ -274,18 +336,33 @@ export class ContactoComponent implements OnInit {
     };
 
     this.RedSocialServicio.Editar(datosEditar).subscribe({
-      next: () => {
+      next: (Respuesta) => {
         // Opcional: actualizar UI, mostrar alerta, etc.
-        this.AlertaServicio.MostrarExito('Estado actualizado correctamente');
-        this.ObtenerRedesSociales(); // si quieres recargar
+        if (Respuesta?.tipo === 'Éxito') {
+          this.AlertaServicio.MostrarExito(Respuesta.message);
+        }
+        this.ObtenerRedesSociales();
       },
-      error: (err) => {
-        this.AlertaServicio.MostrarError(err, 'Error al actualizar el estado');
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
       }
     });
   }
 
   EditarRedSocial(index: number): void {
+    this.isLoading = true;
     const redEditada = this.RedSocial[index];
 
     if (!redEditada || !redEditada.NombreRedSocial || !redEditada.Link) {
@@ -296,13 +373,28 @@ export class ContactoComponent implements OnInit {
     delete redEditada.UrlImagen;
 
     this.RedSocialServicio.Editar(redEditada).subscribe({
-      next: () => {
-        this.AlertaServicio.MostrarExito('Registro actualizado correctamente.');
+      next: (Respuesta) => {
+        if (Respuesta?.tipo === 'Éxito') {
+          this.AlertaServicio.MostrarExito(Respuesta.message);
+        }
         this.MostrarListado[index] = false;
+        this.isLoading = false;
         this.ObtenerRedesSociales();
       },
-      error: (err) => {
-        this.AlertaServicio.MostrarError(err, 'Hubo un error al guardar los cambios');
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
       }
     });
   }
@@ -312,21 +404,21 @@ export class ContactoComponent implements OnInit {
       this.AlertaServicio.MostrarAlerta('Debe completar todos los campos antes de guardar.');
       return;
     }
-
     if (this.RedSocial.length >= 8) {
       this.AlertaServicio.MostrarAlerta('Ya existen 8 registros en BD, no está permitido superar esa cantidad.');
       return;
     }
-
+    this.isLoading = true;
     // Paso 1: Obtener empresa primero
     this.EmpresaServicio.Listado().subscribe({
-      next: (empresas: any[]) => {
-        if (!empresas || empresas.length === 0) {
+      next: (empresas) => {
+        if (!empresas || empresas.data.length === 0) {
           this.AlertaServicio.MostrarAlerta('No se encontró ninguna empresa.');
+          this.isLoading = false;
           return;
         }
 
-        const empresa = empresas[0];
+        const empresa = empresas.data[0];
         const CodigoEmpresa = empresa.CodigoEmpresa;
 
         const Datos = {
@@ -336,8 +428,8 @@ export class ContactoComponent implements OnInit {
         };
 
         this.RedSocialServicio.Crear(Datos).subscribe({
-          next: (res: any) => {
-            this.CodigoTemporal = res?.entidad?.CodigoRedSocial || null;
+          next: (Respuesta) => {
+            this.CodigoTemporal = Respuesta?.data?.CodigoRedSocial || null;
 
             if (this.imagenTemporalArchivo) {
               this.subirImagenRedSocial(this.imagenTemporalArchivo, null);
@@ -345,12 +437,36 @@ export class ContactoComponent implements OnInit {
             }
           },
           error: (error) => {
-            this.AlertaServicio.MostrarError(error, 'Error al crear el registro');
+            this.isLoading = false;
+            const tipo = error?.error?.tipo;
+            const mensaje =
+              error?.error?.error?.message ||
+              error?.error?.message ||
+              'Ocurrió un error inesperado.';
+
+            if (tipo === 'Alerta') {
+              this.AlertaServicio.MostrarAlerta(mensaje);
+            } else {
+              this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+            }
+            this.errorMessage = mensaje;
           }
         });
       },
       error: (error) => {
-        this.AlertaServicio.MostrarError(error, 'Error al obtener los datos de empresa');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
       }
     });
   }
@@ -390,6 +506,7 @@ export class ContactoComponent implements OnInit {
   }
 
   subirImagenRedSocial(file: File, index: number | null): void {
+    this.isLoading = true;
     this.EmpresaServicio.ConseguirPrimeraEmpresa().subscribe({
       next: (empresa) => {
         if (!empresa) {
@@ -414,14 +531,10 @@ export class ContactoComponent implements OnInit {
         formData.append('CampoPropio', 'CodigoRedSocialImagen');
         formData.append('NombreCampoImagen', 'UrlImagen');
 
-        this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
+        this.RedSocialImagenServicio.SubirImagen(formData).subscribe({
           next: (res: any) => {
-            if (res?.Alerta) {
-              this.AlertaServicio.MostrarAlerta(res.Alerta, 'Atención');
-              return;
-            }
 
-            const entidad = res?.Entidad;
+            const entidad = res?.data.Entidad;
 
             if (entidad?.UrlImagen) {
               this.ImagenTemporal = entidad.UrlImagen;
@@ -437,35 +550,64 @@ export class ContactoComponent implements OnInit {
                 Ubicacion: 'Contacto'
               };
               this.RedSocialImagenServicio.Editar(datosEditar).subscribe({
-                next: () => {
-                  this.AlertaServicio.MostrarExito('Registrado correctamente');
+                next: (Respuesta) => {
+                  if (Respuesta?.tipo === 'Éxito') {
+                    this.AlertaServicio.MostrarExito(Respuesta.message);
+                  }
+                  this.isLoading = false;
                   this.ObtenerRedesSociales();
                   this.imagenTemporalArchivo = null;
                   this.ImagenTemporal = '';
                 },
-                error: (err) => {
-                  console.error('Error al actualizar RedSocialImagen:', err);
+                error: (error) => {
+                  this.isLoading = false;
+                  const tipo = error?.error?.tipo;
+                  const mensaje =
+                    error?.error?.error?.message ||
+                    error?.error?.message ||
+                    'Ocurrió un error inesperado.';
+
+                  if (tipo === 'Alerta') {
+                    this.AlertaServicio.MostrarAlerta(mensaje);
+                  } else {
+                    this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+                  }
+                  this.errorMessage = mensaje;
                 }
               });
             }
           },
-          error: (err) => {
-            console.error('Error al subir la imagen:', err);
-            if (err?.error?.Alerta) {
-              this.AlertaServicio.MostrarAlerta(err.error.Alerta, 'Atención');
+          error: (error) => {
+            this.isLoading = false;
+            const tipo = error?.error?.tipo;
+            const mensaje =
+              error?.error?.error?.message ||
+              error?.error?.message ||
+              'Ocurrió un error inesperado.';
+
+            if (tipo === 'Alerta') {
+              this.AlertaServicio.MostrarAlerta(mensaje);
             } else {
-              this.AlertaServicio.MostrarError(err, 'Error al subir la imagen');
+              this.AlertaServicio.MostrarError({ error: { message: mensaje } });
             }
+            this.errorMessage = mensaje;
           }
         });
       },
-      error: (err) => {
-        console.error('Error al obtener la empresa:', err);
-        if (err?.error?.Alerta) {
-          this.AlertaServicio.MostrarAlerta(err.error.Alerta, 'Atención');
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
         } else {
-          this.AlertaServicio.MostrarError(err, 'Error al obtener la empresa');
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
         }
+        this.errorMessage = mensaje;
       }
     });
   }
@@ -483,13 +625,29 @@ export class ContactoComponent implements OnInit {
       'Cancelar'
     ).then(confirmado => {
       if (confirmado) {
+        this.isLoading = true;
         this.RedSocialServicio.Eliminar(codigo).subscribe({
-          next: () => {
+          next: (Respuesta) => {
             this.RedSocial.splice(index, 1);
-            this.AlertaServicio.MostrarExito('Registro eliminada correctamente.');
+            if (Respuesta?.tipo === 'Éxito') {
+              this.AlertaServicio.MostrarExito(Respuesta.message);
+            }
+            this.isLoading = false;
           },
-          error: (err) => {
-            this.AlertaServicio.MostrarError(err, 'Error al eliminar');
+          error: (error) => {
+            this.isLoading = false;
+            const tipo = error?.error?.tipo;
+            const mensaje =
+              error?.error?.error?.message ||
+              error?.error?.message ||
+              'Ocurrió un error inesperado.';
+
+            if (tipo === 'Alerta') {
+              this.AlertaServicio.MostrarAlerta(mensaje);
+            } else {
+              this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+            }
+            this.errorMessage = mensaje;
           }
         });
       }
@@ -504,10 +662,21 @@ export class ContactoComponent implements OnInit {
 
     this.ReporteRedSocialServicio.Crear(DatosReporte).subscribe({
       next: (respuesta) => {
-        console.log(' Reporte creado correctamente:', respuesta);
       },
       error: (error) => {
-        console.error(' Error al crear el reporte:', error);
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
       }
     });
   }
@@ -528,7 +697,7 @@ export class ContactoComponent implements OnInit {
     }
   }
   OcultarRedSocialInactivos() {
-    if (this.Permiso.PermisoSuperAdmin()) {
+    if (this.Permiso.TienePermiso('RedSocial', 'VerUnidad')) {
       return this.RedSocial;
     } else {
       return this.RedSocial.filter(red => red.Estatus === 1);

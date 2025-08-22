@@ -59,7 +59,7 @@ export class AppComponent implements OnInit {
       };
       this.ReporteTiempoPaginaServicio.Crear(datos).subscribe({
         next: (respuesta) => {
-          this.codigoReporteTiempoPagina = respuesta.CodigoReporteTiempoPagina;
+          this.codigoReporteTiempoPagina = respuesta.data.CodigoReporteTiempoPagina;
           this.iniciarActualizacionTiempo();
         },
         error: (err) => console.error('Error creando reporte inicial:', err)
@@ -146,7 +146,6 @@ export class AppComponent implements OnInit {
       blob
     );
 
-    console.log('Último beacon enviado:', exito);
   }
 
   formatearTiempo(ms: number): string {

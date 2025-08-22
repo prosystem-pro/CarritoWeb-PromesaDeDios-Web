@@ -26,7 +26,8 @@ export class CarritoComponent implements OnInit {
   @Input() colorNavbarEIcono: string = '';
   @Input() colorTextoNavbar: string = '';
   datosEmpresa: any = null;
-
+  errorMessage: string = '';
+  isLoading: boolean = false;
   productosCarrito: ProductoConCantidad[] = [];
   total: number = 0;
 
@@ -102,8 +103,23 @@ export class CarritoComponent implements OnInit {
     }
 
     this.ReporteProductoServicio.Crear(productosValidos).subscribe({
-      next: (respuesta) => console.log('Productos reportados correctamente', respuesta),
-      error: (error) => console.error('Error al reportar productos', error)
+      next: (respuesta) => {
+      },
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
+      }
     });
   }
 
@@ -198,9 +214,12 @@ export class CarritoComponent implements OnInit {
     }
 
     this.RedSocialServicio.Listado().subscribe({
-      next: (data: any[]) => {
+      next: (resp: any) => {
         // Buscar el link que sea de WhatsApp y tenga número válido
-        const redWhatsapp = data.find(red =>
+        // const redWhatsapp = data.find(red =>
+        //   typeof red.Link === 'string' && /https:\/\/wa\.me\/\d{8}/.test(red.Link)
+        // );
+        const redWhatsapp = resp.data.find((red: any) =>
           typeof red.Link === 'string' && /https:\/\/wa\.me\/\d{8}/.test(red.Link)
         );
 

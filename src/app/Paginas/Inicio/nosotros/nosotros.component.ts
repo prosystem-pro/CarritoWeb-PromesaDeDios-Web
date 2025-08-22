@@ -137,7 +137,6 @@ export class NosotrosComponent implements OnInit, AfterViewInit {
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            console.log('Video reproduciéndose automáticamente SIN sonido');
             this.videoInicializado = true;
             this.VolumenVideo = false;
 

@@ -7,10 +7,11 @@ import { PermisoServicio } from '../../Autorizacion/AutorizacionPermiso';
 import { AlertaServicio } from '../../Servicios/Alerta-Servicio';
 import { Entorno } from '../../Entornos/Entorno';
 import { ReporteRedSocialServicio } from '../../Servicios/ReporteRedSocialServicio';
+import { SpinnerGlobalComponent } from '../spinner-global/spinner-global.component';
 
 @Component({
   selector: 'app-sidebar-red-social',
-  imports: [CommonModule],
+  imports: [CommonModule, SpinnerGlobalComponent],
   templateUrl: './sidebar-red-social.component.html',
   styleUrl: './sidebar-red-social.component.css',
 })
@@ -18,6 +19,8 @@ export class SidebarRedSocialComponent implements OnInit {
   private Url = `${Entorno.ApiUrl}`;
   private NombreEmpresa = `${Entorno.NombreEmpresa}`;
   RedeSocial: any = [];
+  errorMessage: string = '';
+  isLoading: boolean = false;
 
   constructor(
     private redSocialImagenServicio: RedSocialImagenServicio,
@@ -26,7 +29,7 @@ export class SidebarRedSocialComponent implements OnInit {
     private http: HttpClient,
     private AlertaServicio: AlertaServicio,
     private ReporteRedSocialServicio: ReporteRedSocialServicio
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.cargarRedesSociales();
@@ -70,7 +73,7 @@ export class SidebarRedSocialComponent implements OnInit {
       next: (Respuesta) => {
         this.RedeSocial = Respuesta.data.filter((red: any) => red.Estatus === 1);
       },
-      error: (error) => {},
+      error: (error) => { },
     });
   }
 
@@ -123,6 +126,7 @@ export class SidebarRedSocialComponent implements OnInit {
     codigoRedSocial: number,
     redSocial: any
   ): void {
+    this.isLoading = true;
     const formData = new FormData();
     formData.append('Imagen', file);
     formData.append('CarpetaPrincipal', this.NombreEmpresa);
@@ -151,50 +155,54 @@ export class SidebarRedSocialComponent implements OnInit {
     formData.append('CampoPropio', 'CodigoRedSocialImagen');
     formData.append('NombreCampoImagen', 'UrlImagen');
 
-    this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
-      next: (response: any) => {
-      if (response?.Alerta) {
-        this.AlertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-        return;
-      }
+    this.redSocialImagenServicio.SubirImagen(formData).subscribe({
+      next: (response) => {
 
-      if (response && response.Entidad && response.Entidad.UrlImagen) {
-        this.procesarRespuestaImagen(codigoRedSocial, response, redSocial);
-      } else {
-        const imageUrl =
-          response.UrlImagenPortada ||
-          response.url ||
-          (response.Entidad ? response.Entidad.UrlImagenPortada : null);
-
-        if (imageUrl) {
-          this.procesarRespuestaImagen(
-            codigoRedSocial,
-            { Entidad: { UrlImagen: imageUrl } },
-            redSocial
-          );
+        if (response && response.data.Entidad && response.data.Entidad.UrlImagen) {
+          this.procesarRespuestaImagen(codigoRedSocial, response, redSocial);
         } else {
-          this.AlertaServicio.MostrarError('Error al obtener la URL de la imagen');
-        }
-      }
-    },
-    error: (error) => {
-      if (error?.error?.Alerta) {
-        this.AlertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
-      } else {
-        this.AlertaServicio.MostrarError('Error al subir la imagen');
-      }
+          const imageUrl =
+            response.data.UrlImagenPortada ||
+            response.data.url ||
+            (response.data.Entidad ? response.data.Entidad.UrlImagenPortada : null);
 
-      this.cargarRedesSociales();
-    },
-  });
-}
+          if (imageUrl) {
+            this.procesarRespuestaImagen(
+              codigoRedSocial,
+              { Entidad: { UrlImagen: imageUrl } },
+              redSocial
+            );
+          } else {
+            this.AlertaServicio.MostrarError('Error al obtener la URL de la imagen');
+          }
+        }
+      },
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
+
+        this.cargarRedesSociales();
+      },
+    });
+  }
 
   procesarRespuestaImagen(
     codigoRedSocial: number,
     response: any,
     redSocial: any
   ): void {
-    const urlImagen = response.Entidad.UrlImagen;
+    const urlImagen = response.data.Entidad.UrlImagen;
 
     // Verificar si ya existe una imagen para esta red social en SocialSidebar
     const imagenExistente = redSocial.Imagenes?.find(
@@ -210,7 +218,7 @@ export class SidebarRedSocialComponent implements OnInit {
     } else {
       // ACTUALIZAR EL REGISTRO CREADO AUTOMÁTICAMENTE:
       // El endpoint subir-imagen ya creó un registro, solo necesitamos actualizarlo con la Ubicacion
-      const codigoImagenCreada = response.Entidad.CodigoRedSocialImagen;
+      const codigoImagenCreada = response.data.Entidad.CodigoRedSocialImagen;
 
       if (codigoImagenCreada) {
         this.actualizarRegistroRedSocialImagen(codigoImagenCreada, urlImagen);
@@ -233,16 +241,28 @@ export class SidebarRedSocialComponent implements OnInit {
 
     this.redSocialImagenServicio.Crear(datosNuevos).subscribe({
       next: (response) => {
-        this.AlertaServicio.MostrarExito(
-          'Imagen de red social creada correctamente'
-        );
+        if (response?.tipo === 'Éxito') {
+          this.AlertaServicio.MostrarExito(response.message);
+
+        }
         // Recargar las redes sociales para obtener los datos actualizados
+        this.isLoading = false;
         this.cargarRedesSociales();
       },
       error: (error) => {
-        this.AlertaServicio.MostrarError(
-          'Error al crear la imagen de la red social'
-        );
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
         // Recargar las redes sociales para revertir cambios
         this.cargarRedesSociales();
       },
@@ -261,17 +281,27 @@ export class SidebarRedSocialComponent implements OnInit {
 
     this.redSocialImagenServicio.Editar(datosActualizados).subscribe({
       next: (response) => {
-        this.AlertaServicio.MostrarExito(
-          'Imagen de red social actualizada correctamente'
-        );
-
+        if (response?.tipo === 'Éxito') {
+          this.AlertaServicio.MostrarExito(response.message);
+        }
+        this.isLoading = false;
         // Recargar las redes sociales para obtener los datos actualizados
         setTimeout(() => this.cargarRedesSociales(), 500);
       },
       error: (error) => {
-        this.AlertaServicio.MostrarError(
-          'Error al actualizar la imagen de la red social'
-        );
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.AlertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.AlertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
         // Recargar las redes sociales para revertir cambios
         this.cargarRedesSociales();
       },
