@@ -55,7 +55,8 @@
                     {{ nombreClasificacion | uppercase }}
                 </div>
 
-                <div class="cart-icon" (click)="alternarCarrito()">
+                <div *ngIf="!modoEdicion && (!Permiso.TienePermiso() || Permiso.TienePermiso('CarritoPortada', 'VerUnidad'))"
+                    class="cart-icon" (click)="alternarCarrito()">
                     <span class="cart-count">{{totalItemsCarrito || 0}}</span>
                     <img [src]="DatosHeader.urlImagenCarrito" alt="Carrito" height="30">
                 </div>
@@ -73,21 +74,10 @@
                 </button>
             </div>
 
-            <!-- Estado de carga -->
-            <div *ngIf="cargando" class="loading">
-                <div class="spinner"></div>
-                <p>Cargando productos...</p>
-            </div>
-
-            <!-- Mensaje de error -->
-            <div *ngIf="error" class="error-message">
-                <p>{{ error }}</p>
-            </div>
-
             <!-- Grilla de productos -->
-            <div class="product-grid" *ngIf="!cargando">
+            <div class="product-grid">
                 <!-- Producto vacío para crear nuevo (visible solo en modo edición) -->
-                <div  class="product-card">
+                <div *ngIf="Permiso.TienePermiso('Producto', 'Crear')" class="product-card">
                     <div class="edit-product-controls">
                         <button class="delete-product-btn" title="Cancelar" (click)="cancelarNuevoProducto()">
                             <i class="bi bi-x"></i>
@@ -95,8 +85,8 @@
                     </div>
 
                     <div class="product-image position-relative">
-                        <div *ngIf="!nuevaImagenPreview && Permiso.TienePermiso('Producto', 'SubirImagen')" class="edit-image-overlay d-flex"
-                            (click)="nuevaImagenInput.click()">
+                        <div *ngIf="!nuevaImagenPreview && Permiso.TienePermiso('Producto', 'SubirImagen')"
+                            class="edit-image-overlay d-flex" (click)="nuevaImagenInput.click()">
                             <div class="d-flex flex-column align-items-center justify-content-center w-100">
                                 <i class="bi bi-image fs-3 mb-2"></i>
                                 <span class="small text-white">Seleccionar imagen</span>
@@ -134,11 +124,12 @@
                 </div>
 
                 <!-- Productos existentes -->
-                <section *ngFor="let producto of productos">
+                <ng-container *ngFor="let producto of productos">
                     <div class="product-card" [ngClass]="{'producto-desactivado': producto.Estatus === 2}"
                         *ngIf="producto.Estatus === 1 || Permiso.TienePermiso('Producto', 'VerUnidad')">
+
                         <!-- Opciones de edición (visibles solo en modo edición) -->
-                        <div  class="edit-product-controls">
+                        <div class="edit-product-controls">
                             <button *ngIf="Permiso.TienePermiso('Producto', 'Eliminar')" class="delete-product-btn"
                                 title="Eliminar producto" (click)="eliminarProducto(producto)">
                                 <i class="bi bi-trash"></i>
@@ -154,7 +145,8 @@
                             <img [src]="producto.UrlImagen" [alt]="producto.NombreProducto">
 
                             <!-- Overlay para cambiar imagen en modo edición -->
-                            <div *ngIf="modoEdicion" class="edit-image-overlay" (click)="fileInput.click()">
+                            <div *ngIf="Permiso.TienePermiso('Producto', 'SubirImagen')" class="edit-image-overlay"
+                                (click)="fileInput.click()">
                                 <div class="d-flex flex-column align-items-center justify-content-center">
                                     <i class="bi bi-image fs-3 mb-2"></i>
                                     <span class="small text-white">Cambiar imagen</span>
@@ -166,17 +158,16 @@
 
                         <div class="product-info">
                             <!-- Controles edición de precio en modo edición -->
-                            <div *ngIf="modoEdicion && editandoPrecio !== producto.CodigoProducto"
-                                class="product-price">
+                            <div *ngIf=" editandoPrecio !== producto.CodigoProducto" class="product-price">
                                 <span>{{producto.Moneda}} {{ producto.Precio }}</span>
-                                <button class="edit-price-btn" title="Editar precio"
-                                    (click)="iniciarEdicionPrecio(producto)">
+                                <button *ngIf="  Permiso.TienePermiso('Producto', 'Editar')" class="edit-price-btn"
+                                    title="Editar precio" (click)="iniciarEdicionPrecio(producto)">
                                     <i class="bi bi-pencil-fill"></i>
                                 </button>
                             </div>
 
                             <!-- Formulario edición de precio -->
-                            <div *ngIf="modoEdicion && editandoPrecio === producto.CodigoProducto"
+                            <div *ngIf="  editandoPrecio === producto.CodigoProducto"
                                 class="product-price position-relative">
                                 <input type="text" class="form-control form-control-sm moneda-input"
                                     [(ngModel)]="precioTemp.moneda" placeholder="Q">
@@ -196,16 +187,16 @@
                             </div>
 
                             <!-- Controles edición de nombre en modo edición -->
-                            <div *ngIf="modoEdicion && editandoNombre !== producto.CodigoProducto" class="product-name">
+                            <div *ngIf="editandoNombre !== producto.CodigoProducto" class="product-name">
                                 <span>{{ producto.NombreProducto }}</span>
-                                <button class="edit-name-btn" title="Editar nombre"
-                                    (click)="iniciarEdicionNombre(producto)">
+                                <button *ngIf="  Permiso.TienePermiso('Producto', 'Editar')" class="edit-name-btn"
+                                    title="Editar nombre" (click)="iniciarEdicionNombre(producto)">
                                     <i class="bi bi-pencil-fill"></i>
                                 </button>
                             </div>
 
                             <!-- Formulario edición de nombre -->
-                            <div *ngIf="modoEdicion && editandoNombre === producto.CodigoProducto"
+                            <div *ngIf=" editandoNombre === producto.CodigoProducto"
                                 class="product-name position-relative">
                                 <input type="text" class="form-control form-control-sm" [(ngModel)]="nombreTemporal"
                                     placeholder="Nombre del producto">
@@ -223,12 +214,12 @@
                             </div>
 
                             <!-- Controles de cantidad y botón de agregar (visibles solo cuando NO está en modo edición) -->
-                            <div *ngIf="!modoEdicion">
-                                <div class="product-price">
+                            <div *ngIf="!modoEdicion && (!Permiso.TienePermiso() || Permiso.TienePermiso('CarritoPortada', 'VerUnidad'))" >
+                                <div *ngIf="modoEdicion" class="product-price">
                                     {{producto.Moneda}} {{ producto.Precio }}
                                 </div>
 
-                                <div class="product-name">
+                                <div *ngIf="modoEdicion" class="product-name">
                                     {{ producto.NombreProducto }}
                                 </div>
 
@@ -254,7 +245,7 @@
                             </div>
                         </div>
                     </div>
-                </section>
+                </ng-container>
             </div>
 
             <!-- Si no hay productos -->

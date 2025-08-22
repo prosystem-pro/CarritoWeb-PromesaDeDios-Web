@@ -220,18 +220,17 @@ export class ProductosComponent implements OnInit, OnDestroy {
   }
 
   cargarProductos(codigo: number): void {
-    this.cargando = true;
     this.error = null;
 
     this.productoServicio.ListadoProductos(codigo).subscribe({
       next: (data) => {
-        const esAdminOSuperAdmin = this.Permiso.PermisoAdminSuperAdmin();
+        // const esAdminOSuperAdmin = this.Permiso.PermisoAdminSuperAdmin();
 
         // Filtrar productos según el estatus y rol del usuario
         const productosFiltrados = data.data.filter((producto: Producto) => {
           return (
             producto.Estatus === 1 ||
-            (producto.Estatus === 2 && esAdminOSuperAdmin)
+            (producto.Estatus === 2)
           );
         });
 
@@ -242,11 +241,22 @@ export class ProductosComponent implements OnInit, OnDestroy {
         }));
 
         this.productosOriginales = [...this.productos]; // copia original
-        this.cargando = false;
+        this.isLoading = false;
       },
-      error: (err) => {
-        this.error = 'No se pudieron cargar los productos. Contacte al administrador.';
-        this.cargando = false;
+      error: (error) => {
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
       },
     });
   }
@@ -413,6 +423,7 @@ export class ProductosComponent implements OnInit, OnDestroy {
   }
 
   guardarNombre(producto: ProductoConCantidad): void {
+    this.isLoading = true;
     if (!this.nombreTemporal || this.nombreTemporal.trim() === '') {
       this.alertaServicio.MostrarAlerta('El nombre del producto no puede estar vacío');
       return;
@@ -427,12 +438,26 @@ export class ProductosComponent implements OnInit, OnDestroy {
     this.productoServicio.Editar(producto).subscribe({
       next: (response) => {
         this.cargarProductos(this.codigoClasificacion);
-        this.alertaServicio.MostrarExito('Nombre del producto actualizado correctamente');
+        if (response?.tipo === 'Éxito') {
+          this.alertaServicio.MostrarExito(response.message);
+        }
         this.editandoNombre = null;
+        this.isLoading = false;
       },
       error: (error) => {
-        console.error('Error al actualizar nombre', error);
-        this.alertaServicio.MostrarError(error, 'Error al actualizar nombre');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
         // Restaurar el nombre original en caso de error
         producto.NombreProducto = this.nombreOriginal;
         this.editandoNombre = null;
@@ -481,6 +506,7 @@ export class ProductosComponent implements OnInit, OnDestroy {
   }
 
   guardarPrecio(producto: ProductoConCantidad): void {
+    this.isLoading = false;
     if (!this.precioTemp.moneda || this.precioTemp.moneda.trim() === '') {
       this.alertaServicio.MostrarAlerta('La moneda no puede estar vacía');
       return;
@@ -498,13 +524,28 @@ export class ProductosComponent implements OnInit, OnDestroy {
 
     // Llamar al servicio para actualizar en la base de datos
     this.productoServicio.Editar(producto).subscribe({
-      next: (response) => {
+      next: (Respuesta) => {
         this.cargarProductos(this.codigoClasificacion);
-        this.alertaServicio.MostrarExito('Precio del producto actualizado correctamente');
+        if (Respuesta?.tipo === 'Éxito') {
+          this.alertaServicio.MostrarExito(Respuesta.message);
+        }
         this.editandoPrecio = null;
+        this.isLoading = false;
       },
       error: (error) => {
-        this.alertaServicio.MostrarError(error, 'Error al actualizar precio');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
+        } else {
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
+        }
+        this.errorMessage = mensaje;
         this.cargarProductos(this.codigoClasificacion);
         // Restaurar valores originales
         const partes = this.precioOriginal.match(/([^\d]*)(\d+(?:\.\d+)?)/);
@@ -548,6 +589,7 @@ export class ProductosComponent implements OnInit, OnDestroy {
   }
 
   subirImagenProducto(file: File, producto: ProductoConCantidad): void {
+    this.isLoading = true;
     const formData = new FormData();
     formData.append('Imagen', file);
     formData.append('CarpetaPrincipal', this.NombreEmpresa);
@@ -558,17 +600,14 @@ export class ProductosComponent implements OnInit, OnDestroy {
     formData.append('CampoPropio', 'CodigoProducto');
     formData.append('NombreCampoImagen', 'UrlImagen');
 
-    this.http.post(`${this.Url}subir-imagen`, formData).subscribe({
+    this.productoServicio.SubirImagen(formData).subscribe({
       next: (response: any) => {
-        if (response?.Alerta) {
-          this.alertaServicio.MostrarAlerta(response.Alerta, 'Atención');
-          return;
-        }
-
-        if (response && response.Entidad && response.Entidad.UrlImagen) {
+        if (response && response.data.Entidad && response.data.Entidad.UrlImagen) {
           // Actualizar la URL de la imagen en el producto
-          producto.UrlImagen = response.Entidad.UrlImagen;
-          this.alertaServicio.MostrarExito('Imagen actualizada correctamente');
+          producto.UrlImagen = response.data.Entidad.UrlImagen;
+          if (response?.tipo === 'Éxito') {
+            this.alertaServicio.MostrarExito(response.message);
+          }
           this.cargarProductos(this.codigoClasificacion);
         } else {
           this.alertaServicio.MostrarAlerta('Error al procesar la respuesta del servidor');
@@ -578,11 +617,19 @@ export class ProductosComponent implements OnInit, OnDestroy {
         }
       },
       error: (error) => {
-        if (error?.error?.Alerta) {
-          this.alertaServicio.MostrarAlerta(error.error.Alerta, 'Atención');
+        this.isLoading = false;
+        const tipo = error?.error?.tipo;
+        const mensaje =
+          error?.error?.error?.message ||
+          error?.error?.message ||
+          'Ocurrió un error inesperado.';
+
+        if (tipo === 'Alerta') {
+          this.alertaServicio.MostrarAlerta(mensaje);
         } else {
-          this.alertaServicio.MostrarError(error, 'Error al subir imagen');
+          this.alertaServicio.MostrarError({ error: { message: mensaje } });
         }
+        this.errorMessage = mensaje;
       },
     });
   }
@@ -891,6 +938,7 @@ export class ProductosComponent implements OnInit, OnDestroy {
           this.alertaServicio.MostrarExito(Respuesta.message);
         }
         this.isLoading = false;
+        this.cargarProductos(this.codigoClasificacion);
       },
       error: (error) => {
         this.isLoading = false;
