@@ -22,7 +22,6 @@ axios.get(apiUrl)
       const interfaceOpcional = hacerPropiedadesOpcionales(modelInterface);
       const filePath = `${modelsDirectory}${modelName}.ts`;
       fs.writeFileSync(filePath, interfaceOpcional, 'utf8');
-      console.log(`Modelo ${modelName} generado en: ${filePath}`);
     });
   })
   .catch(error => {
