@@ -32,7 +32,7 @@ export class AppComponent implements OnInit {
     private ReporteVistaServicio: ReporteVistaServicio,
     private ReporteTiempoPaginaServicio: ReporteTiempoPaginaServicio,
     private carritoEstadoService: CarritoEstadoService,
-    public permisoServicio: PermisoServicio,
+    public Permiso: PermisoServicio,
     private loginServicio: LoginServicio
   ) {
     this.carritoEstadoService.carritoAbierto$.subscribe(
@@ -204,7 +204,7 @@ export class AppComponent implements OnInit {
 
   mostrarSidebar(): boolean {
     return !(
-      this.permisoServicio.PermisoAdminSuperAdmin() &&
+      this.Permiso.TienePermiso('RedSocial','VerUnidad') &&
       this.router.url.startsWith('/reporte')
     );
   }

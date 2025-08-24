@@ -32,13 +32,7 @@
         </div>
 
         <div class="container">
-            <!-- Botón para entrar/salir del modo edición (similar al menuCategoria) -->
-            <!-- <button *ngIf="Permiso.PermisoAdminSuperAdmin()" (click)="toggleModoEdicion()"
-                class="btn edit-main-button btn-edit"
-                [ngClass]="{'btn-success': modoEdicion, 'btn-light': !modoEdicion}">
-                <i class="bi" [ngClass]="{'bi-pencil-square': !modoEdicion, 'bi-check-lg': modoEdicion}"
-                    [style.color]="modoEdicion ? '#ffffff' : '#000000'"></i>
-            </button> -->
+
 
             <!-- Cabecera con nombre de categoría -->
             <div class="header">
@@ -268,7 +262,7 @@
         style="height: 150px; display: flex; justify-content: center; align-items: center; gap: 40px; font-weight: bold;">
         <button class="btn px-4 py-2 rounded-pill" [style.backgroundColor]="colorClasificacion"
             [style.color]="colorTextoClasificacion" (click)="volver()">REGRESAR</button>
-        <button *ngIf="!Permiso.EsSoloAdmin()" class="btn px-4 py-2 rounded-pill"
+        <button *ngIf="!modoEdicion && (!Permiso.TienePermiso() || Permiso.TienePermiso('CarritoPortada', 'VerUnidad'))" class="btn px-4 py-2 rounded-pill"
             [style.backgroundColor]="colorClasificacion" [style.color]="colorTextoClasificacion"
             (click)="alternarCarrito()">IR AL CARRITO</button>
     </div>

@@ -185,10 +185,9 @@ export class ProductosComponent implements OnInit, OnDestroy {
 
     this.productoServicio.BuscarProductos(1, texto).subscribe({
       next: (data) => {
-        const esAdminOSuperAdmin = this.Permiso.PermisoAdminSuperAdmin();
-
+        const esAdminOSuperAdmin = this.Permiso.TienePermiso('Producto','VerUnidad');
         // Filtrar productos según el estatus y rol del usuario
-        const productosFiltrados = data.filter((producto: Producto) => {
+        const productosFiltrados = data.data.filter((producto: Producto) => {
           return (
             producto.Estatus === 1 ||
             (producto.Estatus === 2 && esAdminOSuperAdmin)
@@ -224,8 +223,6 @@ export class ProductosComponent implements OnInit, OnDestroy {
 
     this.productoServicio.ListadoProductos(codigo).subscribe({
       next: (data) => {
-        // const esAdminOSuperAdmin = this.Permiso.PermisoAdminSuperAdmin();
-
         // Filtrar productos según el estatus y rol del usuario
         const productosFiltrados = data.data.filter((producto: Producto) => {
           return (
