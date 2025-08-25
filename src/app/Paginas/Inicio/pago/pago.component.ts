@@ -64,6 +64,14 @@ export class PagoComponent implements OnInit {
       },
     });
   }
+  DiasRestantes(fecha: string): number {
+    const hoy = new Date();
+    const vencimiento = new Date(fecha);
+
+    const diff = vencimiento.getTime() - hoy.getTime();
+
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }
 
   AbrirSelectorArchivo(codigoPago: number): void {
     const inputFile = document.getElementById('fileInput-' + codigoPago) as HTMLInputElement | null;
@@ -106,13 +114,13 @@ export class PagoComponent implements OnInit {
 
         this.Servicio.SubirImagen(formData).subscribe({
           next: (response: any) => {
- 
+
             const CodigoPago = response?.data.CodigoPago ?? codigoPago;
             const Datos = { CodigoPago: CodigoPago, Estatus: 2 };
-       
+
             this.Servicio.Editar(Datos).subscribe({
               next: (Respuesta) => {
-      
+
                 if (Respuesta?.tipo === 'Éxito') {
                   this.AlertaServicio.MostrarExito(Respuesta.message);
                 }
