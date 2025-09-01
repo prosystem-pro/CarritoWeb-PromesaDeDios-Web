@@ -47,8 +47,8 @@ export class AppComponent implements OnInit {
     const tokenValido = this.loginServicio.ValidarToken();
     if (!tokenValido) {
       localStorage.removeItem('authToken');
-      localStorage.removeItem('colorClasificacion');
-      localStorage.removeItem('colorClasificacionTexto');
+      // localStorage.removeItem('colorClasificacion');
+      // localStorage.removeItem('colorClasificacionTexto');
     }
 
 

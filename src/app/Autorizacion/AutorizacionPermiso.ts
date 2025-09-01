@@ -59,7 +59,7 @@ export class PermisoServicio {
 
   LimpiarDatos(): void {
     localStorage.removeItem('authToken');
-    localStorage.removeItem('colorClasificacion');
-    localStorage.removeItem('colorClasificacionTexto');
+    // localStorage.removeItem('colorClasificacion');
+    // localStorage.removeItem('colorClasificacionTexto');
   }
 }
