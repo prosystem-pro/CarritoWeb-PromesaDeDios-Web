@@ -304,17 +304,27 @@
 
   .trigo-izquierda {
     width: 85px;
-    top: 62%; /* Ajuste para móviles */
+    top: 57%; /* Ajuste para móviles */
   }
 
   .trigo-derecho {
-    width: 100px;
-    bottom: 62%; /* Ajuste para móviles */
+    width: 80px;
+    bottom: 65%;
+    right: 5px;
+    z-index: 1;
+    opacity: 0.8;
   }
 
   .reproductor {
     width: 100%;
     height: 260px;
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    padding-left: 20px;
+    padding-right: 20px;
   }
 }
 
